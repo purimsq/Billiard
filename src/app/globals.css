@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-felt: #F4F2EC;
+    --card-bg: #FFFFFF;
+    --text-primary: #1C1C1E;
+    --text-muted: #6E6E73;
+    --purple-pill: #DDD6FE;
+    --purple-text: #4C1D95;
+    --purple-primary: #6366F1;
+  }
+
+  body {
+    background-color: var(--bg-felt);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+    user-select: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Pool Ball Rendering Utilities */
+.ball-shadow {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2), inset -2px -2px 6px rgba(0, 0, 0, 0.3), inset 2px 2px 5px rgba(255, 255, 255, 0.4);
+}
+
+.stripe-pattern {
+  background: linear-gradient(
+    180deg,
+    #FFFFFF 0%,
+    #FFFFFF 24%,
+    var(--stripe-color) 25%,
+    var(--stripe-color) 75%,
+    #FFFFFF 76%,
+    #FFFFFF 100%
+  );
+}
+
+/* Custom Glass & Card Styling */
+.felt-card {
+  background-color: #FFFFFF;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.felt-pill-purple {
+  background-color: #ECE7FF;
+  color: #4338CA;
+}
+
+.felt-pill-purple:hover {
+  background-color: #E0E7FF;
+}
+
+.felt-btn-dark {
+  background-color: #18181B;
+  color: #FFFFFF;
+}
+
+.felt-btn-dark:active {
+  transform: scale(0.98);
 }
