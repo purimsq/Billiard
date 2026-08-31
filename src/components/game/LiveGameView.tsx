@@ -33,7 +33,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
     return acc + (ballDef?.points || 0);
   }, 0);
 
-  // Active point value from either custom typing or multi-ball sum
+  // Active point value — custom input takes priority over ball selection
   const currentInputValue = customInput !== ''
     ? (parseInt(customInput, 10) || 0)
     : selectedBallsSum;
@@ -119,9 +119,8 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
 
   return (
     <div className="w-full max-w-2xl mx-auto h-[100dvh] flex flex-col justify-between overflow-hidden bg-[#F4F2EC]">
-      {/* ========================================== */}
-      {/* TOP SECTION: 2-COLUMN RECTANGULAR CARDS   */}
-      {/* ========================================== */}
+
+      {/* top section — player cards */}
       <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-2 space-y-2.5 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b-2 border-zinc-900">
@@ -161,7 +160,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
           </div>
         )}
 
-        {/* 2-Column Rectangular Player Cards */}
+        {/* player cards grid */}
         <div className="flex-1 overflow-y-auto pr-1 py-1">
           <div className="grid grid-cols-2 gap-2">
             {session.players.map((player) => {
@@ -195,7 +194,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Empty space in the middle of half-screen rectangle card */}
+                  {/* spacer */}
                   <div className="flex-1" />
 
                   <div className="text-right flex-shrink-0 pl-2 min-w-[44px]">
@@ -221,11 +220,11 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
         </div>
       </div>
 
-      {/* BOTTOM SECTION: REDESIGNED CALCULATOR       */}
+      {/* bottom calculator panel */}
       <div className="bg-white rounded-t-3xl border-t border-zinc-200 shadow-2xl p-4 sm:p-5 min-h-[38vh] flex flex-col justify-between space-y-3 z-20">
-        {/* TOP ROW: Mode Toggle (Left) | Target Player (Right) */}
+        {/* mode toggle and active player */}
         <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
-          {/* Top Left: Add / Subtract Mode Toggle */}
+          {/* add / subtract toggle */}
           <div className="flex items-center p-0.5 rounded-2xl bg-zinc-100 border border-zinc-200 flex-shrink-0">
             <button
               onClick={() => setScoreMode('add')}
@@ -251,7 +250,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
             </button>
           </div>
 
-          {/* Top Right: Target Player Indicator */}
+          {/* which player is being scored */}
           <div className="flex items-center gap-1.5 bg-zinc-100 px-3.5 py-1.5 rounded-2xl border border-zinc-200/80 flex-shrink-0">
             <span className="text-[10px] font-bold text-zinc-400 uppercase">Target:</span>
             <span className="text-xs font-extrabold text-indigo-900 truncate max-w-[120px]">
@@ -260,7 +259,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
           </div>
         </div>
 
-        {/* MIDDLE AREA: INTERACTIVE DIRECT NUMERIC INPUT DISPLAY */}
+        {/* score input — type a number or use the ball picker */}
         <div className="flex-1 flex flex-col items-center justify-center py-2 text-center">
           <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest block mb-0.5">
             TYPE OR SELECT POINT VALUE
@@ -301,9 +300,9 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
           </div>
         </div>
 
-        {/* BOTTOM ROW: [ Quick Balls Drawer Button ] on Left & [ CONFIRM ] on Right */}
+        {/* quick balls toggle on the left, confirm button on the right */}
         <div className="flex items-center justify-between gap-3 pt-1">
-          {/* Bottom Left: Quick Balls Drawer Toggle */}
+          {/* opens / closes the ball picker tray */}
           <button
             onClick={() => setIsBallsDrawerOpen(!isBallsDrawerOpen)}
             className={`px-4 py-2.5 rounded-2xl border font-extrabold text-xs flex items-center gap-1.5 transition flex-shrink-0 ${
@@ -320,7 +319,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
             </span>
           </button>
 
-          {/* Bottom Right: CONFIRM Button */}
+          {/* confirm and apply the score */}
           <button
             onClick={handleConfirmScore}
             disabled={currentInputValue === 0 || !selectedPlayer}
@@ -335,7 +334,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
           </button>
         </div>
 
-        {/* EXPANDABLE QUICK BALLS DRAWER TRAY */}
+        {/* expandable ball picker */}
         {isBallsDrawerOpen && (
           <div className="pt-2 border-t border-zinc-100 animate-fadeIn">
             <div className="flex items-center justify-between pb-1 px-1">

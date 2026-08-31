@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-/* ─────────────────────────────────────────────
-   Pool ball colours (solids 1–8)
-───────────────────────────────────────────── */
+// Pool ball colours — solids 1 through 8
 const BALL_COLORS = [
   { main: '#F5C842', num: 1 }, // yellow
   { main: '#2563EB', num: 2 }, // blue
@@ -16,9 +14,7 @@ const BALL_COLORS = [
   { main: '#18181B', num: 8 }, // black (8-ball)
 ];
 
-/* ─────────────────────────────────────────────
-   Single pool ball SVG
-───────────────────────────────────────────── */
+// Single pool ball SVG with number, gloss, and drop shadow
 const PoolBallSVG: React.FC<{ color: string; num: number; size?: number }> = ({
   color,
   num,
@@ -54,11 +50,7 @@ const PoolBallSVG: React.FC<{ color: string; num: number; size?: number }> = ({
   </svg>
 );
 
-/* ─────────────────────────────────────────────
-   Wave-bounce pool ball loader
-   3 random balls; smooth sine-wave rise+fall,
-   long rest at the bottom between bounces.
-───────────────────────────────────────────── */
+// Three randomly picked balls that bounce in a wave — one set per mount
 const PoolBallLoader: React.FC<{ label: string }> = ({ label }) => {
   const [balls] = useState(() => {
     const shuffled = [...BALL_COLORS].sort(() => Math.random() - 0.5);
@@ -86,10 +78,7 @@ const PoolBallLoader: React.FC<{ label: string }> = ({ label }) => {
   );
 };
 
-/* ─────────────────────────────────────────────
-   Arc spinner — matches reference image:
-   thin indigo arc, elegant "C" shape rotation
-───────────────────────────────────────────── */
+// Thin indigo arc spinner — matches the reference loading style
 const ArcSpinner: React.FC<{ label: string }> = ({ label }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px' }}>
     <div
@@ -127,9 +116,7 @@ const LoaderText: React.FC<{ label: string }> = ({ label }) => (
   </p>
 );
 
-/* ─────────────────────────────────────────────
-   Variant config
-───────────────────────────────────────────── */
+// Variant config — maps each loading state to its label and animation type
 export type LoadingVariant = 'quick' | 'game' | 'results' | 'again';
 
 interface LoadingScreenProps {
@@ -147,9 +134,7 @@ const VARIANT_CONFIG: Record<
   again:   { label: 'Racking up…',             useBalls: true  },
 };
 
-/* ─────────────────────────────────────────────
-   Exported LoadingScreen
-───────────────────────────────────────────── */
+// Main loading screen overlay
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ variant, visible }) => {
   const [show, setShow] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);

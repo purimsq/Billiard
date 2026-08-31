@@ -12,7 +12,7 @@ import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
 
 const emptySubscribe = () => () => {};
 
-/* Random duration helper — min/max in ms */
+// Returns a random duration in milliseconds between min and max
 const randMs = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -43,11 +43,11 @@ export default function Home() {
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(false);
   const [isEndGameOpen, setIsEndGameOpen] = useState<boolean>(false);
 
-  /* ── Loading overlay state ── */
+  // loading overlay state
   const [loadingVariant, setLoadingVariant] = useState<LoadingVariant>('quick');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  /** Fire a loading screen, then run `action` after `ms` ms */
+  // shows a loading screen, then runs the action after ms milliseconds
   const withLoader = useCallback(
     (variant: LoadingVariant, ms: number, action: () => void) => {
       setLoadingVariant(variant);
@@ -73,14 +73,14 @@ export default function Home() {
     saveActiveGame(updated);
   };
 
-  /* "Start Game" from HomeHero → quick flash → open setup modal */
+  // tap start game on home → brief loader → open player setup
   const handleOpenSetup = () => {
     withLoader('quick', randMs(2500, 3500), () => setIsSetupOpen(true));
   };
 
-  /* "Start Game" inside PlayerSetupModal → full "Preparing Game" loader */
+  // confirm players in setup modal → full preparing game loader → go live
   const handleStartGame = (players: Player[]) => {
-    setIsSetupOpen(false); // close modal immediately
+    setIsSetupOpen(false); // close the setup modal right away
     withLoader('game', randMs(3500, 5500), () => {
       const newSession: GameSession = {
         id: `game_${Date.now()}`,
@@ -108,7 +108,7 @@ export default function Home() {
     setCurrentView('home');
   };
 
-  /* End game button → "Preparing Results" loader → open end modal */
+  // end game button → preparing results loader → open the results modal
   const handleEndGameClick = () => {
     withLoader('results', randMs(2500, 4000), () => setIsEndGameOpen(true));
   };
@@ -123,7 +123,7 @@ export default function Home() {
     setCurrentView('home');
   };
 
-  /* Play Again → "Racking Up" loader → new session */
+  // play again → brief rack up loader → reset scores and start fresh
   const handlePlayAgain = () => {
     if (!activeSession) return;
     setIsEndGameOpen(false);
@@ -165,7 +165,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#F4F2EC] selection:bg-indigo-500 selection:text-white">
-      {/* ── Loading overlay (sits above everything) ── */}
+      {/* loading overlay — sits above everything */}
       <LoadingScreen variant={loadingVariant} visible={isLoading} />
 
       {currentView === 'home' && (
@@ -189,14 +189,14 @@ export default function Home() {
         />
       )}
 
-      {/* Player Setup Modal */}
+      {/* player setup modal */}
       <PlayerSetupModal
         isOpen={isSetupOpen}
         onClose={() => setIsSetupOpen(false)}
         onStartGame={handleStartGame}
       />
 
-      {/* End Game Modal */}
+      {/* end game results modal */}
       {activeSession && (
         <EndGameModal
           session={activeSession}
