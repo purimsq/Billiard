@@ -1,22 +1,38 @@
 {
-  "name": "Billard Scorekeeper",
-  "short_name": "Billard",
+  "name": "Billiard Scorekeeper",
+  "short_name": "Billiard",
   "description": "Offline-first billiards point counting PWA",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#F4F2EC",
-  "theme_color": "#F4F2EC",
+  "background_color": "#1a3a2a",
+  "theme_color": "#1a3a2a",
   "orientation": "portrait",
+  "categories": ["sports", "games", "utilities"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

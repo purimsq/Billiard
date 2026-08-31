@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
 import { GameSession, Player } from '@/types/game';
 import { getActiveGame, saveActiveGame, clearActiveGame, saveGameToHistory } from '@/lib/storage';
 import { HomeHero } from '@/components/home/HomeHero';
@@ -8,8 +8,13 @@ import { RulesCard } from '@/components/home/RulesCard';
 import { PlayerSetupModal } from '@/components/game/PlayerSetupModal';
 import { LiveGameView } from '@/components/game/LiveGameView';
 import { EndGameModal } from '@/components/game/EndGameModal';
+import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
 
 const emptySubscribe = () => () => {};
+
+/* Random duration helper — min/max in ms */
+const randMs = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
 export default function Home() {
   const isMounted = useSyncExternalStore(
@@ -38,8 +43,24 @@ export default function Home() {
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(false);
   const [isEndGameOpen, setIsEndGameOpen] = useState<boolean>(false);
 
+  /* ── Loading overlay state ── */
+  const [loadingVariant, setLoadingVariant] = useState<LoadingVariant>('quick');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  /** Fire a loading screen, then run `action` after `ms` ms */
+  const withLoader = useCallback(
+    (variant: LoadingVariant, ms: number, action: () => void) => {
+      setLoadingVariant(variant);
+      setIsLoading(true);
+      setTimeout(() => {
+        action();
+        setIsLoading(false);
+      }, ms);
+    },
+    []
+  );
+
   useEffect(() => {
-    // Register Service Worker for offline PWA functionality
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
         console.log('ServiceWorker registration failed: ', err);
@@ -47,49 +68,51 @@ export default function Home() {
     }
   }, []);
 
-  // Save active session changes to localStorage
   const handleUpdateSession = (updated: GameSession) => {
     setActiveSession(updated);
     saveActiveGame(updated);
   };
 
-  // Start new game handler from Setup Modal
-  const handleStartGame = (players: Player[]) => {
-    const newSession: GameSession = {
-      id: `game_${Date.now()}`,
-      players,
-      history: [],
-      status: 'live',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    setActiveSession(newSession);
-    saveActiveGame(newSession);
-    setIsSetupOpen(false);
-    setCurrentView('live');
+  /* "Start Game" from HomeHero → quick flash → open setup modal */
+  const handleOpenSetup = () => {
+    withLoader('quick', randMs(2500, 3500), () => setIsSetupOpen(true));
   };
 
-  // Resume active saved game
+  /* "Start Game" inside PlayerSetupModal → full "Preparing Game" loader */
+  const handleStartGame = (players: Player[]) => {
+    setIsSetupOpen(false); // close modal immediately
+    withLoader('game', randMs(3500, 5500), () => {
+      const newSession: GameSession = {
+        id: `game_${Date.now()}`,
+        players,
+        history: [],
+        status: 'live',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setActiveSession(newSession);
+      saveActiveGame(newSession);
+      setCurrentView('live');
+    });
+  };
+
   const handleResumeGame = () => {
     if (activeSession) {
       setCurrentView('live');
     }
   };
 
-  // Clear current saved session
   const handleClearSession = () => {
     clearActiveGame();
     setActiveSession(null);
     setCurrentView('home');
   };
 
-  // Open end game confirmation/scoreboard modal
+  /* End game button → "Preparing Results" loader → open end modal */
   const handleEndGameClick = () => {
-    setIsEndGameOpen(true);
+    withLoader('results', randMs(2500, 4000), () => setIsEndGameOpen(true));
   };
 
-  // Done button on End Game modal (clears scoreboard & returns home)
   const handleDoneEndGame = () => {
     if (activeSession) {
       saveGameToHistory(activeSession);
@@ -100,23 +123,24 @@ export default function Home() {
     setCurrentView('home');
   };
 
-  // Play Again button on End Game modal
+  /* Play Again → "Racking Up" loader → new session */
   const handlePlayAgain = () => {
     if (!activeSession) return;
-    // Reset player scores to 0
-    const resetPlayers = activeSession.players.map((p) => ({ ...p, score: 0 }));
-    const newSession: GameSession = {
-      id: `game_${Date.now()}`,
-      players: resetPlayers,
-      history: [],
-      status: 'live',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    setActiveSession(newSession);
-    saveActiveGame(newSession);
     setIsEndGameOpen(false);
-    setCurrentView('live');
+    withLoader('again', randMs(2000, 3500), () => {
+      const resetPlayers = activeSession.players.map((p) => ({ ...p, score: 0 }));
+      const newSession: GameSession = {
+        id: `game_${Date.now()}`,
+        players: resetPlayers,
+        history: [],
+        status: 'live',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setActiveSession(newSession);
+      saveActiveGame(newSession);
+      setCurrentView('live');
+    });
   };
 
   if (!isMounted) {
@@ -125,7 +149,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-            Loading Billard...
+            Loading Billiard...
           </p>
         </div>
       </div>
@@ -141,11 +165,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#F4F2EC] selection:bg-indigo-500 selection:text-white">
+      {/* ── Loading overlay (sits above everything) ── */}
+      <LoadingScreen variant={loadingVariant} visible={isLoading} />
+
       {currentView === 'home' && (
         <div className="animate-fadeIn space-y-4">
           <HomeHero
             activeSession={activeSession}
-            onStartNewGame={() => setIsSetupOpen(true)}
+            onStartNewGame={handleOpenSetup}
             onResumeGame={handleResumeGame}
             onClearSession={handleClearSession}
             onScrollToRules={handleScrollToRules}

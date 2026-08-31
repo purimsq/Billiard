@@ -22,7 +22,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
   const [scoreMode, setScoreMode] = useState<'add' | 'subtract'>('add');
   const [selectedBalls, setSelectedBalls] = useState<number[]>([]);
   const [customInput, setCustomInput] = useState<string>('');
-  const [isBallsDrawerOpen, setIsBallsDrawerOpen] = useState<boolean>(true);
+  const [isBallsDrawerOpen, setIsBallsDrawerOpen] = useState<boolean>(false);
   const [lastNotification, setLastNotification] = useState<string | null>(null);
 
   const selectedPlayer = session.players.find((p) => p.id === selectedPlayerId);
