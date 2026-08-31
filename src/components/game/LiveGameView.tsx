@@ -221,9 +221,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({
         </div>
       </div>
 
-      {/* ========================================== */}
       {/* BOTTOM SECTION: REDESIGNED CALCULATOR       */}
-      {/* ========================================== */}
       <div className="bg-white rounded-t-3xl border-t border-zinc-200 shadow-2xl p-4 sm:p-5 min-h-[38vh] flex flex-col justify-between space-y-3 z-20">
         {/* TOP ROW: Mode Toggle (Left) | Target Player (Right) */}
         <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
