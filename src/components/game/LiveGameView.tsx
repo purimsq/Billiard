@@ -332,8 +332,8 @@ export function LiveGameView({
             <h1
               className={`text-xl font-black italic tracking-widest bg-clip-text text-transparent font-serif uppercase ${
                 isDark
-                  ? 'bg-gradient-to-r from-white via-indigo-200 to-indigo-400'
-                  : 'bg-gradient-to-r from-zinc-900 via-indigo-950 to-indigo-800'
+                  ? 'bg-gradient-to-r from-red-500 via-blue-500 to-purple-400'
+                  : 'bg-gradient-to-r from-red-600 via-black to-purple-600'
               }`}
             >
               BILLIARD
