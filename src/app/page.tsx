@@ -10,9 +10,12 @@ import { LiveGameView } from '@/components/game/LiveGameView';
 import { EndGameModal } from '@/components/game/EndGameModal';
 import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
 import { SettingsPage } from '@/components/settings/SettingsPage';
+import { GlobalUpdateBanner } from '@/components/ui/GlobalUpdateBanner';
 import { AppSettings } from '@/types/settings';
 import { getStoredSettings, saveStoredSettings, DEFAULT_SETTINGS } from '@/lib/settingsStorage';
 import { requestScreenWakeLock, releaseScreenWakeLock, isStandaloneMode } from '@/lib/wakeLockManager';
+import { runCheckForUpdates } from '@/lib/systemUpdateManager';
+import { checkRealInternetConnectivity } from '@/lib/networkReachability';
 
 const emptySubscribe = () => () => {};
 
@@ -115,6 +118,15 @@ export default function Home() {
         console.log('ServiceWorker registration failed: ', err);
       });
     }
+
+    // When entering the app, check if online and check for genuine updates
+    checkRealInternetConnectivity().then((health) => {
+      if (health.hasInternet) {
+        setTimeout(() => {
+          runCheckForUpdates({ isAutomatic: true });
+        }, 1800);
+      }
+    });
   }, []);
 
   const handleUpdateSession = (updated: GameSession) => {
@@ -222,6 +234,13 @@ export default function Home() {
       <LoadingScreen
         variant={loadingVariant}
         visible={isLoading}
+        isDark={settings.darkMode}
+      />
+
+      {/* Global background update notification */}
+      <GlobalUpdateBanner
+        currentView={currentView}
+        onOpenSettings={handleOpenSettings}
         isDark={settings.darkMode}
       />
 

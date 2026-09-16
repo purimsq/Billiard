@@ -11,6 +11,14 @@ import {
   Download,
   Info,
   Sparkles,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Wifi,
+  WifiOff,
+  Package,
+  CheckCircle2,
+  ArrowDownCircle,
 } from 'lucide-react';
 import { AppSettings } from '@/types/settings';
 import {
@@ -20,6 +28,19 @@ import {
   releaseScreenWakeLock,
   MobilePlatform,
 } from '@/lib/wakeLockManager';
+import {
+  subscribeNetworkHealth,
+  getNetworkHealthSnapshot,
+} from '@/lib/networkReachability';
+import {
+  getSystemUpdateSnapshot,
+  subscribeSystemUpdate,
+  runCheckForUpdates,
+  applySystemUpdate,
+  dismissAppliedBanner,
+  RECENT_CHANGELOG,
+  BUILD_DATE,
+} from '@/lib/systemUpdateManager';
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -109,6 +130,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     () => 'other' as MobilePlatform
   );
 
+  const network = useSyncExternalStore(
+    subscribeNetworkHealth,
+    getNetworkHealthSnapshot,
+    getNetworkHealthSnapshot
+  );
+
+  const updateState = useSyncExternalStore(
+    subscribeSystemUpdate,
+    getSystemUpdateSnapshot,
+    getSystemUpdateSnapshot
+  );
+
+  const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
   const [activeInstallTab, setActiveInstallTab] = useState<'ios' | 'android'>(() =>
     detectPlatform() === 'android' ? 'android' : 'ios'
   );
@@ -807,6 +841,351 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           >
             Set friendly table forfeits for friends around the pool table: <em>Loser buys next round 🍺</em>, <em>racks next 3 games 🎱</em>, or <em>20 pushups 💪</em>. Proclaimed officially on the winner podium!
           </p>
+        </div>
+      </div>
+
+      {/* SECTION 5: SYSTEM & SOFTWARE UPDATES */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <h3
+            className={`text-[11px] font-extrabold uppercase tracking-wider ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}
+          >
+            System Updates
+          </h3>
+          <div className="flex items-center gap-1.5">
+            {network.hasInternet ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <Wifi className="w-2.5 h-2.5" />
+                Online
+              </span>
+            ) : network.hasRadio ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                <WifiOff className="w-2.5 h-2.5" />
+                No Data / Bundles
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-500/15 text-zinc-500 border border-zinc-500/20">
+                <WifiOff className="w-2.5 h-2.5" />
+                Offline
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Celebratory Banner: Shown after reload when an update has just been applied */}
+        {updateState.recentlyAppliedVersion && (
+          <div
+            className={`p-4 rounded-3xl border flex items-start justify-between gap-3 animate-fadeIn ${
+              isDark
+                ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-100'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="text-xs font-black uppercase tracking-wide flex items-center gap-2">
+                  <span>New Version Applied!</span>
+                  <span className="px-1.5 py-0.5 text-[9px] rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-black font-mono">
+                    {updateState.recentlyAppliedVersion}
+                  </span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed opacity-90">
+                  Billiard has been refreshed and updated with the latest draw &amp; tie rules, wake lock upgrades, and performance enhancements.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => dismissAppliedBanner()}
+              className="text-xs font-bold px-2 py-1 rounded-lg opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* System Updates Card */}
+        <div
+          className={`p-5 rounded-3xl border space-y-4 transition-all ${
+            isDark
+              ? 'bg-zinc-900/90 border-zinc-800'
+              : 'bg-white border-zinc-200 shadow-sm'
+          }`}
+        >
+          {/* Top: App Version & Installation Status */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  updateState.status === 'installing'
+                    ? 'bg-indigo-600 text-white animate-pulse'
+                    : updateState.status === 'ready'
+                    ? 'bg-emerald-500 text-white'
+                    : isDark
+                    ? 'bg-zinc-800 text-indigo-400'
+                    : 'bg-indigo-50 text-indigo-600'
+                }`}
+              >
+                {updateState.status === 'installing' ? (
+                  <ArrowDownCircle className="w-5 h-5 animate-bounce" />
+                ) : updateState.status === 'ready' ? (
+                  <Sparkles className="w-5 h-5" />
+                ) : (
+                  <Package className="w-5 h-5" />
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-black text-sm sm:text-base uppercase tracking-tight">
+                    Billiard Scoreboard
+                  </h4>
+                  <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full border font-mono ${
+                      isDark
+                        ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                        : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                    }`}
+                  >
+                    v{updateState.currentVersion}
+                  </span>
+                </div>
+                <p
+                  className={`text-[11px] font-medium ${
+                    isDark ? 'text-zinc-400' : 'text-zinc-500'
+                  }`}
+                >
+                  Build: {BUILD_DATE} • Last checked: {updateState.lastCheckTime}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Pill Badge */}
+            {updateState.status === 'installing' && (
+              <span className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 animate-pulse flex-shrink-0">
+                INSTALLING...
+              </span>
+            )}
+            {updateState.status === 'ready' && (
+              <span className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+                READY TO APPLY
+              </span>
+            )}
+            {updateState.status === 'checking' && (
+              <span className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">
+                CHECKING...
+              </span>
+            )}
+            {(updateState.status === 'idle' || updateState.status === 'up_to_date') && (
+              <span className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-zinc-500/15 text-zinc-500 border border-zinc-500/20 flex-shrink-0">
+                UP TO DATE
+              </span>
+            )}
+          </div>
+
+          {/* Real Network Notice (Handles Depleted Bundles & Offline Wi-Fi) */}
+          {!network.hasInternet && (
+            <div
+              className={`p-3.5 rounded-2xl border flex items-start gap-2.5 text-xs font-semibold ${
+                isDark
+                  ? 'bg-amber-950/30 border-amber-900/50 text-amber-300'
+                  : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+            >
+              <WifiOff className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">
+                  {network.hasRadio
+                    ? 'No Active Data Connection Detected'
+                    : 'You are currently offline'}
+                </p>
+                <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                  {network.hasRadio
+                    ? 'Your device is connected to a network, but actual HTTP traffic cannot reach the internet (data bundles may be depleted or Wi-Fi requires sign-in). Updates will resume automatically once active internet is verified.'
+                    : 'Connect to Wi-Fi or cellular data to check and install updates automatically.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* INSTALLING STATE: Automatic background installation, cannot be stopped */}
+          {updateState.status === 'installing' && (
+            <div
+              className={`p-4 rounded-2xl border space-y-3 ${
+                isDark
+                  ? 'bg-indigo-950/25 border-indigo-800/40'
+                  : 'bg-indigo-50/60 border-indigo-100'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Installing Update ({updateState.availableVersion || 'v1.2.1'})</span>
+                </div>
+                <span className="font-black text-xs text-indigo-600 dark:text-indigo-400 font-mono">
+                  {updateState.installProgress}%
+                </span>
+              </div>
+
+              {/* Progress Track */}
+              <div className="w-full h-2.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-300 relative overflow-hidden"
+                  style={{ width: `${updateState.installProgress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-[pulse_1s_infinite]" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] gap-2">
+                <p className="font-medium text-zinc-600 dark:text-zinc-400 truncate">
+                  {updateState.installStepMessage}
+                </p>
+                <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 flex-shrink-0">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Automatic (Cannot Stop)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* READY STATE: Update ready, refresh button */}
+          {updateState.status === 'ready' && (
+            <div
+              className={`p-4 rounded-2xl border space-y-3 ${
+                isDark
+                  ? 'bg-emerald-950/25 border-emerald-800/40'
+                  : 'bg-emerald-50/70 border-emerald-100'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                  Update Successfully Installed ({updateState.availableVersion || 'v1.2.1'})
+                </span>
+              </div>
+              <p
+                className={`text-xs font-medium leading-relaxed ${
+                  isDark ? 'text-zinc-300' : 'text-zinc-700'
+                }`}
+              >
+                A new version has been downloaded and cached in the background. Tap the button below to refresh Billiard and apply the new version.
+              </p>
+
+              <button
+                onClick={() => applySystemUpdate()}
+                disabled={updateState.isRefreshing}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${updateState.isRefreshing ? 'animate-spin' : ''}`} />
+                <span>{updateState.isRefreshing ? 'Applying & Refreshing...' : 'Refresh App & Apply New Version'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* CHECKING STATE */}
+          {updateState.status === 'checking' && (
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-500 flex-shrink-0" />
+              <div className="text-xs font-medium">
+                <p className="font-bold text-zinc-900 dark:text-zinc-100">Checking for updates...</p>
+                <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">Connecting to update manifest and service worker cache...</p>
+              </div>
+            </div>
+          )}
+
+          {/* UP TO DATE NOTICE (Shown when checked and no update is available) */}
+          {updateState.status === 'up_to_date' && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs animate-fadeIn">
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                Your app is up to date! (v{updateState.currentVersion} is the latest release). No updates available.
+              </span>
+            </div>
+          )}
+
+          {/* IDLE STATE: Manual Check Action & Dev Simulator */}
+          {updateState.status === 'idle' && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+              <span
+                className={`text-[11px] font-medium flex items-center gap-1.5 ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
+                You are on the latest verified release (v{updateState.currentVersion}).
+              </span>
+
+              <div className="flex items-center">
+                <button
+                  onClick={() => runCheckForUpdates({ isAutomatic: false })}
+                  disabled={!network.hasInternet}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                    network.hasInternet
+                      ? isDark
+                        ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-sm active:scale-95'
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 shadow-sm active:scale-95'
+                      : 'opacity-40 cursor-not-allowed bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                  }`}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Check for Updates</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Release Notes / What's New Accordion */}
+          <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              onClick={() => setIsChangelogOpen(!isChangelogOpen)}
+              className={`w-full flex items-center justify-between py-1 text-xs font-bold ${
+                isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-600 hover:text-zinc-900'
+              } transition-colors`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>What&apos;s New in Recent Updates</span>
+              </span>
+              {isChangelogOpen ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+
+            {isChangelogOpen && (
+              <div className="mt-2.5 space-y-3 animate-fadeIn">
+                {RECENT_CHANGELOG.map((log) => (
+                  <div
+                    key={log.version}
+                    className={`p-3 rounded-2xl border text-xs space-y-1.5 ${
+                      isDark
+                        ? 'bg-zinc-800/30 border-zinc-800'
+                        : 'bg-zinc-50 border-zinc-200/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-indigo-600 dark:text-indigo-400">
+                        {log.version}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-semibold">{log.date}</span>
+                    </div>
+                    <ul className="space-y-1 pl-3 list-disc marker:text-indigo-500 text-[11px] leading-relaxed">
+                      {log.highlights.map((h, i) => (
+                        <li key={i} className={isDark ? 'text-zinc-300' : 'text-zinc-600'}>
+                          {h}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

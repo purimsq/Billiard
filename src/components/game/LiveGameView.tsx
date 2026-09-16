@@ -301,7 +301,6 @@ export function LiveGameView({
     setTimeout(() => setLastNotification(null), 2500);
   };
 
-  const sortedPlayers = [...session.players].sort((a, b) => b.score - a.score);
   const isTargetCracked = isDialogueEnabled && (selectedPlayer ? crackedPlayerIds.has(selectedPlayer.id) : false);
   const isDark = settings?.darkMode ?? false;
 
@@ -407,7 +406,14 @@ export function LiveGameView({
           <div className="grid grid-cols-2 gap-2">
             {session.players.map((player) => {
               const isSelected = player.id === selectedPlayerId;
-              const rank = sortedPlayers.findIndex((p) => p.id === player.id) + 1;
+              // Official tournament rank accommodating ties/draws
+              const strictlyHigher = session.players.filter((p) => p.score > player.score).length;
+              const sameScore = session.players.filter((p) => p.score === player.score).length;
+              const rank = strictlyHigher + 1;
+              const isTied = sameScore > 1;
+              const displayRank = isTied ? `T-#${rank}` : `#${rank}`;
+              const isCoLeader = rank === 1 && isTied;
+
               const isCracked = isDialogueEnabled && crackedPlayerIds.has(player.id);
               const isJustCracked = recentlyCrackedPlayerId === player.id;
               const isResurrecting = resurrectingPlayerId === player.id;
@@ -444,7 +450,7 @@ export function LiveGameView({
                   {/* Table Leader Crown - perched on top right of the card, tilted to the right like a hat */}
                   {showCrown && (
                     <div
-                      title="Table Leader"
+                      title={isCoLeader ? 'Co-Leader (Tied for #1)' : 'Table Leader (#1)'}
                       className="absolute -top-3.5 -right-2 z-30 transform rotate-[16deg] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] select-none pointer-events-none text-2xl sm:text-[26px] leading-none"
                     >
                       👑
@@ -548,7 +554,7 @@ export function LiveGameView({
                                 : 'bg-zinc-100 text-zinc-700 border-zinc-300/90'
                             }`}
                           >
-                            🪦 RIP #{rank}
+                            🪦 RIP {displayRank}
                           </span>
                         ) : isExtinguished ? (
                           <span
@@ -568,10 +574,17 @@ export function LiveGameView({
                         ) : (
                           <span
                             className={`text-[10px] font-bold ${
-                              isDark ? 'text-zinc-500' : 'text-zinc-400'
+                              isCoLeader
+                                ? isDark
+                                  ? 'text-amber-400 font-extrabold'
+                                  : 'text-amber-600 font-extrabold'
+                                : isDark
+                                ? 'text-zinc-500'
+                                : 'text-zinc-400'
                             }`}
+                            title={isTied ? `Tied for #${rank}` : `Rank #${rank}`}
                           >
-                            #{rank}
+                            {displayRank}
                           </span>
                         )}
                       </div>

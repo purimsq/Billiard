@@ -34,7 +34,25 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   if (!isOpen) return null;
 
   const sortedPlayers = [...session.players].sort((a, b) => b.score - a.score);
-  const winner = sortedPlayers[0];
+
+  // Group players by score to accurately identify ties/draws
+  const topScore = sortedPlayers[0]?.score ?? 0;
+  const tiedWinners = sortedPlayers.filter((p) => p.score === topScore);
+  const isDraw = tiedWinners.length > 1;
+
+  // Rank calculation helper accommodating ties across the entire board
+  const getRankInfo = (score: number) => {
+    const higherCount = sortedPlayers.filter((p) => p.score > score).length;
+    const sameCount = sortedPlayers.filter((p) => p.score === score).length;
+    const rank = higherCount + 1;
+    const isTied = sameCount > 1;
+    return {
+      rank,
+      isTied,
+      isTop: rank === 1,
+      displayRank: isTied ? `T-#${rank}` : `#${rank}`,
+    };
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/75 backdrop-blur-sm animate-fadeIn">
@@ -45,32 +63,53 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
             : 'bg-white border-zinc-200 text-zinc-900'
         }`}
       >
-        {/* Winner Announcement Header */}
+        {/* Winner / Draw Announcement Header */}
         <div
-          className={`text-center space-y-1 pt-1 pb-3 border-b ${
+          className={`text-center space-y-1.5 pt-1 pb-3.5 border-b ${
             isDark ? 'border-zinc-800' : 'border-zinc-100'
           }`}
         >
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500">
-            Session Concluded
-          </span>
+          {isDraw ? (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <span>🤝</span>
+              <span>IT&apos;S A DRAW • TIED FOR 1ST</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500">
+              Session Concluded
+            </span>
+          )}
+
           <h2
             className={`text-2xl font-black tracking-tight uppercase font-serif ${
               isDark ? 'text-zinc-100' : 'text-zinc-900'
             }`}
           >
-            FINAL RESULTS
+            {isDraw ? 'TIED CHAMPIONS' : 'FINAL RESULTS'}
           </h2>
-          {winner && (
+
+          {isDraw ? (
             <p className={`text-xs font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
-              <strong className={isDark ? 'text-zinc-100' : 'text-zinc-900'}>
-                {winner.name}
+              <strong className={isDark ? 'text-amber-400' : 'text-amber-600'}>
+                {tiedWinners.map((w) => w.name).join(' & ')}
               </strong>{' '}
-              leads with{' '}
+              tied for 1st place with{' '}
               <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>
-                {winner.score} pts
+                {topScore > 0 ? `+${topScore}` : topScore} pts
               </strong>
             </p>
+          ) : (
+            sortedPlayers[0] && (
+              <p className={`text-xs font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                <strong className={isDark ? 'text-zinc-100' : 'text-zinc-900'}>
+                  {sortedPlayers[0].name}
+                </strong>{' '}
+                leads with{' '}
+                <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>
+                  {sortedPlayers[0].score > 0 ? `+${sortedPlayers[0].score}` : sortedPlayers[0].score} pts
+                </strong>
+              </p>
+            )
           )}
         </div>
 
@@ -81,13 +120,14 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
               isDark ? 'text-zinc-500' : 'text-zinc-400'
             }`}
           >
-            <span>Rank & Player</span>
+            <span>Rank &amp; Player</span>
             <span>Final Score</span>
           </div>
 
           <div className="space-y-1.5">
-            {sortedPlayers.map((player, idx) => {
-              const isWinner = idx === 0;
+            {sortedPlayers.map((player) => {
+              const rankInfo = getRankInfo(player.score);
+              const isWinner = rankInfo.isTop;
 
               return (
                 <div
@@ -104,31 +144,42 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`w-5 text-center text-xs font-black ${
-                        isDark ? 'text-zinc-500' : 'text-zinc-400'
+                      className={`w-7 text-center text-xs font-black ${
+                        isWinner
+                          ? 'text-amber-500'
+                          : isDark
+                          ? 'text-zinc-500'
+                          : 'text-zinc-400'
                       }`}
                     >
-                      #{idx + 1}
+                      {rankInfo.displayRank}
                     </span>
 
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-extrabold text-xs shadow-sm"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-extrabold text-xs shadow-sm flex-shrink-0"
                       style={{ backgroundColor: player.color }}
                     >
                       {player.name.slice(0, 2).toUpperCase()}
                     </div>
 
                     <div>
-                      <h4
-                        className={`font-extrabold text-sm leading-none ${
-                          isDark ? 'text-zinc-100' : 'text-zinc-900'
-                        }`}
-                      >
-                        {player.name}
-                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4
+                          className={`font-extrabold text-sm leading-none ${
+                            isDark ? 'text-zinc-100' : 'text-zinc-900'
+                          }`}
+                        >
+                          {player.name}
+                        </h4>
+                        {isWinner && (
+                          <span className="text-xs" title={isDraw ? 'Tied Winner' : 'Winner'}>
+                            👑
+                          </span>
+                        )}
+                      </div>
                       {isWinner && (
                         <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-wide">
-                          Winner
+                          {isDraw ? 'Tied Winner' : 'Winner'}
                         </span>
                       )}
                     </div>
