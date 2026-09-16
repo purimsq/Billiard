@@ -17,10 +17,19 @@ export const BUILD_DATE = 'September 16, 2026';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
   {
+    version: 'v1.2.1',
+    date: 'September 16, 2026',
+    highlights: [
+      'Modified UI: Updated Billiard title gradient to red-black-purple in light theme and radiant red-blue-purple in dark theme',
+      'Fixed: Official draw and tie support on live and final scoreboards with shared leader crowns and co-champions',
+      'Fixed: System update checks with real network reachability (depleted data bundle & captive portal detection)',
+      'Fixed: Battery conservation preventing repeated background update loops while using the app',
+    ],
+  },
+  {
     version: 'v1.2.0',
     date: 'September 2026',
     highlights: [
-      'Official draw and tie support on live and final scoreboards with shared leader crowns and co-champions',
       'Native Screen Wake Lock API connection with PWA home screen enforcement and fail-safe media loop',
       'Device-tailored Add to Home Screen step-by-step guides for iOS Safari and Android Chrome',
       'Obsidian dark mode overhaul with high-contrast text and glowing card borders',
