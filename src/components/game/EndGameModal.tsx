@@ -7,6 +7,7 @@ interface EndGameModalProps {
   isOpen: boolean;
   onDone: () => void;
   onNewGame: () => void;
+  isDark?: boolean;
 }
 
 export const EndGameModal: React.FC<EndGameModalProps> = ({
@@ -14,6 +15,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   isOpen,
   onDone,
   onNewGame,
+  isDark = false,
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -35,27 +37,50 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const winner = sortedPlayers[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 border border-zinc-200 relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/75 backdrop-blur-sm animate-fadeIn">
+      <div
+        className={`w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 border relative max-h-[90vh] overflow-y-auto transition-colors ${
+          isDark
+            ? 'bg-zinc-900 border-zinc-800 text-zinc-100'
+            : 'bg-white border-zinc-200 text-zinc-900'
+        }`}
+      >
         {/* Winner Announcement Header */}
-        <div className="text-center space-y-1 pt-1 border-b border-zinc-100 pb-3">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-600">
+        <div
+          className={`text-center space-y-1 pt-1 pb-3 border-b ${
+            isDark ? 'border-zinc-800' : 'border-zinc-100'
+          }`}
+        >
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500">
             Session Concluded
           </span>
-          <h2 className="text-2xl font-black text-zinc-900 tracking-tight uppercase font-serif">
+          <h2
+            className={`text-2xl font-black tracking-tight uppercase font-serif ${
+              isDark ? 'text-zinc-100' : 'text-zinc-900'
+            }`}
+          >
             FINAL RESULTS
           </h2>
           {winner && (
-            <p className="text-xs font-medium text-zinc-600">
-              <strong className="text-zinc-900">{winner.name}</strong> leads with{' '}
-              <strong className="text-indigo-600">{winner.score} pts</strong>
+            <p className={`text-xs font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
+              <strong className={isDark ? 'text-zinc-100' : 'text-zinc-900'}>
+                {winner.name}
+              </strong>{' '}
+              leads with{' '}
+              <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>
+                {winner.score} pts
+              </strong>
             </p>
           )}
         </div>
 
         {/* Compact Final Standings Table */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 px-2">
+          <div
+            className={`flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider px-2 ${
+              isDark ? 'text-zinc-500' : 'text-zinc-400'
+            }`}
+          >
             <span>Rank & Player</span>
             <span>Final Score</span>
           </div>
@@ -69,12 +94,20 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                   key={player.id}
                   className={`p-3 rounded-xl flex items-center justify-between transition border ${
                     isWinner
-                      ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-400/50'
+                      ? isDark
+                        ? 'bg-amber-950/30 border-amber-800/60 ring-1 ring-amber-500/30'
+                        : 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-400/50'
+                      : isDark
+                      ? 'bg-zinc-800/60 border-zinc-700/60'
                       : 'bg-zinc-50 border-zinc-200/80'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-5 text-center text-xs font-black text-zinc-400">
+                    <span
+                      className={`w-5 text-center text-xs font-black ${
+                        isDark ? 'text-zinc-500' : 'text-zinc-400'
+                      }`}
+                    >
                       #{idx + 1}
                     </span>
 
@@ -86,11 +119,15 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                     </div>
 
                     <div>
-                      <h4 className="font-extrabold text-zinc-900 text-sm leading-none">
+                      <h4
+                        className={`font-extrabold text-sm leading-none ${
+                          isDark ? 'text-zinc-100' : 'text-zinc-900'
+                        }`}
+                      >
                         {player.name}
                       </h4>
                       {isWinner && (
-                        <span className="text-[9px] font-extrabold text-amber-700 uppercase tracking-wide">
+                        <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-wide">
                           Winner
                         </span>
                       )}
@@ -101,15 +138,23 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                     <span
                       className={`text-lg font-black ${
                         isWinner
-                          ? 'text-amber-900'
+                          ? isDark
+                            ? 'text-amber-400'
+                            : 'text-amber-900'
                           : player.score < 0
-                          ? 'text-rose-600'
+                          ? 'text-rose-500'
+                          : isDark
+                          ? 'text-zinc-100'
                           : 'text-zinc-900'
                       }`}
                     >
                       {player.score > 0 ? `+${player.score}` : player.score}
                     </span>
-                    <span className="text-[9px] text-zinc-400 font-bold block leading-none">
+                    <span
+                      className={`text-[9px] font-bold block leading-none ${
+                        isDark ? 'text-zinc-500' : 'text-zinc-400'
+                      }`}
+                    >
                       pts
                     </span>
                   </div>
@@ -123,14 +168,22 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         <div className="grid grid-cols-2 gap-2.5 pt-2">
           <button
             onClick={onNewGame}
-            className="py-3 px-4 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-bold text-xs transition"
+            className={`py-3 px-4 rounded-2xl font-bold text-xs transition ${
+              isDark
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
+            }`}
           >
             PLAY AGAIN
           </button>
 
           <button
             onClick={onDone}
-            className="py-3 px-4 rounded-2xl bg-zinc-900 hover:bg-indigo-600 text-white font-black text-xs transition shadow-md active:scale-95"
+            className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-md active:scale-95 ${
+              isDark
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                : 'bg-zinc-900 hover:bg-indigo-600 text-white'
+            }`}
           >
             DONE
           </button>

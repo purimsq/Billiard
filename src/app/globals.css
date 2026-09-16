@@ -12,8 +12,8 @@
   }
 
   body {
-    background-color: var(--bg-felt);
-    color: var(--text-primary);
+    background-color: #F4F2EC;
+    color: #1C1C1E;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -62,6 +62,10 @@
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
+.dark .felt-card {
+  background-color: #18181B;
+}
+
 .felt-pill-purple {
   background-color: #ECE7FF;
   color: #4338CA;
@@ -78,4 +82,71 @@
 
 .felt-btn-dark:active {
   transform: scale(0.98);
+}
+
+/* Slower, dramatic Card Fracture Animation */
+@keyframes crackPop {
+  0% { transform: scale(1); }
+  18% { transform: scale(0.96) rotate(-2deg); }
+  38% { transform: scale(1.03) rotate(2deg); }
+  60% { transform: scale(0.98) rotate(-1deg); }
+  80% { transform: scale(1.01) rotate(0.5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.animate-crackPop {
+  animation: crackPop 0.9s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+/* Radiant Shimmer / Moving Lazy-Loading Light Sweep for Revival */
+@keyframes lightSweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-lightSweep {
+  animation: lightSweep 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes auraGlow {
+  0% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+  15% {
+    opacity: 1;
+    box-shadow: 0 0 25px 8px rgba(255, 255, 255, 0.95), 0 0 40px 15px rgba(251, 191, 36, 0.35);
+  }
+  75% {
+    opacity: 1;
+    box-shadow: 0 0 30px 10px rgba(255, 255, 255, 0.9), 0 0 45px 18px rgba(251, 191, 36, 0.3);
+  }
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+.animate-auraGlow {
+  animation: auraGlow 2.4s ease-out forwards;
+}
+
+/* Hot Hand / On Fire Flame Pulse */
+@keyframes flamePulse {
+  0%, 100% {
+    box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.45), inset 0 0 8px rgba(239, 68, 68, 0.2);
+    border-color: rgba(245, 158, 11, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 22px 5px rgba(249, 115, 22, 0.75), inset 0 0 14px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 0.95);
+  }
+}
+
+.animate-flamePulse {
+  animation: flamePulse 1.6s ease-in-out infinite;
 }

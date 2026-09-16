@@ -9,6 +9,10 @@ import { PlayerSetupModal } from '@/components/game/PlayerSetupModal';
 import { LiveGameView } from '@/components/game/LiveGameView';
 import { EndGameModal } from '@/components/game/EndGameModal';
 import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
+import { SettingsPage } from '@/components/settings/SettingsPage';
+import { AppSettings } from '@/types/settings';
+import { getStoredSettings, saveStoredSettings, DEFAULT_SETTINGS } from '@/lib/settingsStorage';
+import { requestScreenWakeLock, releaseScreenWakeLock, isStandaloneMode } from '@/lib/wakeLockManager';
 
 const emptySubscribe = () => () => {};
 
@@ -30,7 +34,7 @@ export default function Home() {
     return null;
   });
 
-  const [currentView, setCurrentView] = useState<'home' | 'live'>(() => {
+  const [currentView, setCurrentView] = useState<'home' | 'live' | 'settings'>(() => {
     if (typeof window !== 'undefined') {
       const saved = getActiveGame();
       if (saved && saved.players.length > 0 && saved.status === 'live') {
@@ -40,8 +44,53 @@ export default function Home() {
     return 'home';
   });
 
+  const [previousView, setPreviousView] = useState<'home' | 'live'>('home');
+
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(false);
   const [isEndGameOpen, setIsEndGameOpen] = useState<boolean>(false);
+
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    if (typeof window !== 'undefined') {
+      return getStoredSettings();
+    }
+    return DEFAULT_SETTINGS;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.darkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [settings.darkMode]);
+
+  // Screen Wake Lock: Persistent across app when in standalone mode
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isStandalone = isStandaloneMode();
+    if (settings.keepScreenAwake && isStandalone) {
+      requestScreenWakeLock();
+    } else {
+      releaseScreenWakeLock();
+    }
+  }, [settings.keepScreenAwake]);
+
+  const handleUpdateSettings = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    saveStoredSettings(newSettings);
+  };
+
+  const handleOpenSettings = () => {
+    if (currentView !== 'settings') {
+      setPreviousView(currentView);
+    }
+    setCurrentView('settings');
+  };
+
+  const handleBackFromSettings = () => {
+    setCurrentView(previousView);
+  };
 
   // loading overlay state
   const [loadingVariant, setLoadingVariant] = useState<LoadingVariant>('quick');
@@ -164,9 +213,17 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F4F2EC] selection:bg-indigo-500 selection:text-white">
+    <main
+      className={`min-h-screen selection:bg-indigo-500 selection:text-white transition-colors ${
+        settings.darkMode ? 'bg-[#121214] text-zinc-100' : 'bg-[#F4F2EC] text-[#1C1C1E]'
+      }`}
+    >
       {/* loading overlay — sits above everything */}
-      <LoadingScreen variant={loadingVariant} visible={isLoading} />
+      <LoadingScreen
+        variant={loadingVariant}
+        visible={isLoading}
+        isDark={settings.darkMode}
+      />
 
       {currentView === 'home' && (
         <div className="animate-fadeIn space-y-4">
@@ -176,16 +233,30 @@ export default function Home() {
             onResumeGame={handleResumeGame}
             onClearSession={handleClearSession}
             onScrollToRules={handleScrollToRules}
+            onOpenSettings={handleOpenSettings}
+            isDark={settings.darkMode}
           />
-          <RulesCard />
+          <RulesCard isDark={settings.darkMode} />
         </div>
       )}
 
       {currentView === 'live' && activeSession && (
         <LiveGameView
           session={activeSession}
+          settings={settings}
           onUpdateSession={handleUpdateSession}
           onEndGame={handleEndGameClick}
+          onOpenSettings={handleOpenSettings}
+        />
+      )}
+
+      {/* settings page (renders on the page, not a card/modal) */}
+      {currentView === 'settings' && (
+        <SettingsPage
+          settings={settings}
+          onUpdateSettings={handleUpdateSettings}
+          onBack={handleBackFromSettings}
+          returnToViewTitle={previousView === 'live' ? 'Live Game' : 'Home'}
         />
       )}
 
@@ -194,6 +265,7 @@ export default function Home() {
         isOpen={isSetupOpen}
         onClose={() => setIsSetupOpen(false)}
         onStartGame={handleStartGame}
+        isDark={settings.darkMode}
       />
 
       {/* end game results modal */}
@@ -203,6 +275,7 @@ export default function Home() {
           isOpen={isEndGameOpen}
           onDone={handleDoneEndGame}
           onNewGame={handlePlayAgain}
+          isDark={settings.darkMode}
         />
       )}
     </main>

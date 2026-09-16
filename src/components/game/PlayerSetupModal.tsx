@@ -6,12 +6,14 @@ interface PlayerSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartGame: (players: Player[]) => void;
+  isDark?: boolean;
 }
 
 export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
   isOpen,
   onClose,
   onStartGame,
+  isDark = false,
 }) => {
   const [playerNames, setPlayerNames] = useState<string[]>(['Player 1', 'Player 2']);
   const [error, setError] = useState<string | null>(null);
@@ -62,24 +64,52 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 border border-zinc-200 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/75 backdrop-blur-sm animate-fadeIn">
+      <div
+        className={`w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 border relative transition-colors ${
+          isDark
+            ? 'bg-zinc-900 border-zinc-800 text-zinc-100'
+            : 'bg-white border-zinc-200 text-zinc-900'
+        }`}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+        <div
+          className={`flex items-center justify-between pb-3 border-b ${
+            isDark ? 'border-zinc-800' : 'border-zinc-100'
+          }`}
+        >
           <div>
-            <h3 className="text-xl font-black text-zinc-900 tracking-tight">PLAYER SETUP</h3>
-            <p className="text-xs text-zinc-500 font-medium">Add players in turn order</p>
+            <h3
+              className={`text-xl font-black tracking-tight ${
+                isDark ? 'text-zinc-100' : 'text-zinc-900'
+              }`}
+            >
+              PLAYER SETUP
+            </h3>
+            <p className={`text-xs font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Add players in turn order
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="text-xs font-bold text-zinc-400 hover:text-zinc-700 px-2 py-1"
+            className={`text-xs font-bold px-2 py-1 transition ${
+              isDark
+                ? 'text-zinc-400 hover:text-zinc-200'
+                : 'text-zinc-400 hover:text-zinc-700'
+            }`}
           >
             Cancel
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+          <div
+            className={`p-3 rounded-2xl text-xs font-semibold border ${
+              isDark
+                ? 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                : 'bg-rose-50 border-rose-200 text-rose-700'
+            }`}
+          >
             {error}
           </div>
         )}
@@ -100,14 +130,22 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
                   value={name}
                   onChange={(e) => handleNameChange(index, e.target.value)}
                   placeholder={`Player ${index + 1} Name`}
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:bg-white transition"
+                  className={`flex-1 px-3.5 py-2 rounded-xl border font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition ${
+                    isDark
+                      ? 'bg-zinc-800/90 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:bg-zinc-800 focus:border-indigo-500'
+                      : 'bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-indigo-600'
+                  }`}
                   required
                 />
                 {playerNames.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleRemovePlayer(index)}
-                    className="text-xs font-bold text-zinc-400 hover:text-rose-600 px-2 py-1 transition"
+                    className={`text-xs font-bold px-2 py-1 transition ${
+                      isDark
+                        ? 'text-zinc-500 hover:text-rose-400'
+                        : 'text-zinc-400 hover:text-rose-600'
+                    }`}
                   >
                     Remove
                   </button>
@@ -120,7 +158,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
           <button
             type="button"
             onClick={handleAddPlayer}
-            className="w-full py-2.5 px-4 rounded-2xl border border-dashed border-zinc-300 text-zinc-700 font-bold text-xs hover:bg-zinc-50 hover:border-indigo-300 hover:text-indigo-600 transition"
+            className={`w-full py-2.5 px-4 rounded-2xl border border-dashed font-bold text-xs transition ${
+              isDark
+                ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 hover:text-indigo-400'
+                : 'border-zinc-300 text-zinc-700 hover:bg-zinc-50 hover:border-indigo-300 hover:text-indigo-600'
+            }`}
           >
             + ADD PLAYER FIELD
           </button>
@@ -129,7 +171,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3.5 rounded-2xl bg-zinc-900 text-white font-black text-sm hover:bg-indigo-600 active:scale-[0.99] shadow-lg transition-all"
+              className={`w-full py-3.5 rounded-2xl font-black text-sm active:scale-[0.99] shadow-lg transition-all ${
+                isDark
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-zinc-900 hover:bg-indigo-600 text-white'
+              }`}
             >
               START GAME
             </button>

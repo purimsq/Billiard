@@ -1,4 +1,5 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 import { GameSession } from '@/types/game';
 
 interface HomeHeroProps {
@@ -7,6 +8,8 @@ interface HomeHeroProps {
   onResumeGame: () => void;
   onClearSession: () => void;
   onScrollToRules?: () => void;
+  onOpenSettings?: () => void;
+  isDark?: boolean;
 }
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
@@ -15,18 +18,48 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
   onResumeGame,
   onClearSession,
   onScrollToRules,
+  onOpenSettings,
+  isDark = false,
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto space-y-3 pt-2 px-4">
-      {/* Simple, Compact Title Header with Visible Black Line */}
-      <div className="flex items-center justify-between pb-2 border-b-2 border-zinc-900">
-        <h1 className="text-xl sm:text-2xl font-black italic tracking-widest bg-gradient-to-r from-zinc-900 via-indigo-950 to-indigo-800 bg-clip-text text-transparent font-serif uppercase">
+      {/* Simple, Compact Title Header */}
+      <div
+        className={`flex items-center justify-between pb-2 border-b-2 ${
+          isDark ? 'border-zinc-800' : 'border-zinc-900'
+        }`}
+      >
+        <h1
+          className={`text-xl sm:text-2xl font-black italic tracking-widest bg-clip-text text-transparent font-serif uppercase ${
+            isDark
+              ? 'bg-gradient-to-r from-white via-indigo-200 to-indigo-400'
+              : 'bg-gradient-to-r from-zinc-900 via-indigo-950 to-indigo-800'
+          }`}
+        >
           BILLIARD
         </h1>
 
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-600 font-serif italic">
-          SCOREKEEPER
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-[10px] font-extrabold uppercase tracking-widest font-serif italic ${
+              isDark ? 'text-zinc-400' : 'text-zinc-600'
+            }`}
+          >
+            SCOREKEEPER
+          </span>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Settings"
+            className={`p-1.5 rounded-full transition-all active:scale-90 ${
+              isDark
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/70'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Main Landing Card with Background Image (Compact Height) */}
@@ -55,20 +88,38 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
           {/* START GAME Card */}
           <button
             onClick={onStartNewGame}
-            className="felt-card p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border border-zinc-200/90 bg-white flex items-center justify-between group cursor-pointer h-20 sm:h-22"
+            className={`p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border flex items-center justify-between group cursor-pointer h-20 sm:h-22 ${
+              isDark
+                ? 'rounded-3xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 hover:border-zinc-700 shadow-sm'
+                : 'felt-card border-zinc-200/90 bg-white'
+            }`}
           >
             <div className="space-y-0.5">
-              <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest block">
+              <span className="text-[9px] font-extrabold text-indigo-500 uppercase tracking-widest block">
                 New Session
               </span>
-              <h3 className="font-black text-zinc-900 text-sm sm:text-base group-hover:text-indigo-600 transition-colors leading-none">
+              <h3
+                className={`font-black text-sm sm:text-base transition-colors leading-none ${
+                  isDark
+                    ? 'text-zinc-100 group-hover:text-indigo-400'
+                    : 'text-zinc-900 group-hover:text-indigo-600'
+                }`}
+              >
                 START GAME
               </h3>
-              <p className="text-[10px] text-zinc-500 font-medium truncate">
+              <p
+                className={`text-[10px] font-medium truncate ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
                 Add players
               </p>
             </div>
-            <span className="text-sm font-black text-zinc-900 group-hover:translate-x-1 transition-transform pl-1">
+            <span
+              className={`text-sm font-black group-hover:translate-x-1 transition-transform pl-1 ${
+                isDark ? 'text-zinc-100' : 'text-zinc-900'
+              }`}
+            >
               →
             </span>
           </button>
@@ -76,20 +127,38 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
           {/* GAME RULES Card */}
           <button
             onClick={onScrollToRules}
-            className="felt-card p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border border-zinc-200/90 bg-white flex items-center justify-between group cursor-pointer h-20 sm:h-22"
+            className={`p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border flex items-center justify-between group cursor-pointer h-20 sm:h-22 ${
+              isDark
+                ? 'rounded-3xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 hover:border-zinc-700 shadow-sm'
+                : 'felt-card border-zinc-200/90 bg-white'
+            }`}
           >
             <div className="space-y-0.5">
-              <span className="text-[9px] font-extrabold text-amber-600 uppercase tracking-widest block">
+              <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-widest block">
                 Scoring Guide
               </span>
-              <h3 className="font-black text-zinc-900 text-sm sm:text-base group-hover:text-amber-600 transition-colors leading-none">
+              <h3
+                className={`font-black text-sm sm:text-base transition-colors leading-none ${
+                  isDark
+                    ? 'text-zinc-100 group-hover:text-amber-400'
+                    : 'text-zinc-900 group-hover:text-amber-600'
+                }`}
+              >
                 GAME RULES
               </h3>
-              <p className="text-[10px] text-zinc-500 font-medium truncate">
+              <p
+                className={`text-[10px] font-medium truncate ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
                 Ball values
               </p>
             </div>
-            <span className="text-sm font-black text-zinc-900 group-hover:translate-x-1 transition-transform pl-1">
+            <span
+              className={`text-sm font-black group-hover:translate-x-1 transition-transform pl-1 ${
+                isDark ? 'text-zinc-100' : 'text-zinc-900'
+              }`}
+            >
               ↓
             </span>
           </button>
@@ -99,15 +168,29 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
       {/* Active Game Banner */}
       {activeSession && (
         <div className="pt-1">
-          <div className="felt-card p-3 border border-indigo-200 bg-indigo-50/40 flex items-center justify-between gap-2">
+          <div
+            className={`p-3 border flex items-center justify-between gap-2 rounded-2xl ${
+              isDark
+                ? 'border-indigo-900/60 bg-zinc-900/90'
+                : 'felt-card border-indigo-200 bg-indigo-50/40'
+            }`}
+          >
             <div className="space-y-0.5 truncate">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-900">
+                <span
+                  className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                    isDark ? 'text-indigo-300' : 'text-indigo-900'
+                  }`}
+                >
                   Active Game
                 </span>
               </div>
-              <p className="text-xs font-bold text-zinc-800 truncate">
+              <p
+                className={`text-xs font-bold truncate ${
+                  isDark ? 'text-zinc-200' : 'text-zinc-800'
+                }`}
+              >
                 {activeSession.players.map(p => `${p.name} (${p.score})`).join(' • ')}
               </p>
             </div>
@@ -115,14 +198,16 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
                 onClick={onResumeGame}
-                className="px-3.5 py-1.5 rounded-full bg-indigo-600 text-white font-extrabold text-xs hover:bg-indigo-700 shadow-sm transition active:scale-95"
+                className="px-3.5 py-1.5 rounded-full bg-indigo-600 text-white font-extrabold text-xs hover:bg-indigo-500 shadow-sm transition active:scale-95"
               >
                 RESUME
               </button>
               <button
                 onClick={onClearSession}
                 title="Discard session"
-                className="text-[11px] text-zinc-400 hover:text-rose-600 px-1.5 py-1 transition"
+                className={`text-[11px] px-1.5 py-1 transition ${
+                  isDark ? 'text-zinc-400 hover:text-rose-400' : 'text-zinc-400 hover:text-rose-600'
+                }`}
               >
                 Clear
               </button>

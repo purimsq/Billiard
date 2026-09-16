@@ -8,6 +8,7 @@ interface PoolBallProps {
   selected?: boolean;
   onClick?: () => void;
   className?: string;
+  isDark?: boolean;
 }
 
 export const PoolBall: React.FC<PoolBallProps> = ({
@@ -17,6 +18,7 @@ export const PoolBall: React.FC<PoolBallProps> = ({
   selected = false,
   onClick,
   className = '',
+  isDark = false,
 }) => {
   const ball = getBallByNumber(number);
   if (!ball) return null;
@@ -39,7 +41,11 @@ export const PoolBall: React.FC<PoolBallProps> = ({
     <div
       onClick={onClick}
       className={`relative inline-flex flex-col items-center cursor-pointer select-none transition-all duration-150 ${
-        selected ? 'scale-110 ring-4 ring-indigo-500/50 rounded-full' : 'hover:scale-105 active:scale-95'
+        selected
+          ? isDark
+            ? 'scale-110 ring-4 ring-indigo-500/70 rounded-full'
+            : 'scale-110 ring-4 ring-indigo-500/50 rounded-full'
+          : 'hover:scale-105 active:scale-95'
       } ${className}`}
     >
       <div
@@ -71,7 +77,13 @@ export const PoolBall: React.FC<PoolBallProps> = ({
       </div>
 
       {showPoints && (
-        <span className="mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-zinc-900 text-white shadow-sm">
+        <span
+          className={`mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
+            isDark
+              ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+              : 'bg-zinc-900 text-white'
+          }`}
+        >
           {ball.points} pts
         </span>
       )}

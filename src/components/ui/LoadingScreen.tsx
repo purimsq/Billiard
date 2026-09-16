@@ -15,10 +15,11 @@ const BALL_COLORS = [
 ];
 
 // Single pool ball SVG with number, gloss, and drop shadow
-const PoolBallSVG: React.FC<{ color: string; num: number; size?: number }> = ({
+const PoolBallSVG: React.FC<{ color: string; num: number; size?: number; isDark?: boolean }> = ({
   color,
   num,
   size = 40,
+  isDark = false,
 }) => (
   <svg
     width={size}
@@ -28,7 +29,7 @@ const PoolBallSVG: React.FC<{ color: string; num: number; size?: number }> = ({
     style={{ display: 'block', flexShrink: 0 }}
   >
     {/* Drop shadow */}
-    <ellipse cx="20" cy="37" rx="11" ry="2.5" fill="rgba(0,0,0,0.13)" />
+    <ellipse cx="20" cy="37" rx="11" ry="2.5" fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.13)'} />
     {/* Ball body */}
     <circle cx="20" cy="19" r="17" fill={color} />
     {/* Gloss */}
@@ -51,7 +52,7 @@ const PoolBallSVG: React.FC<{ color: string; num: number; size?: number }> = ({
 );
 
 // Three randomly picked balls that bounce in a wave — one set per mount
-const PoolBallLoader: React.FC<{ label: string }> = ({ label }) => {
+const PoolBallLoader: React.FC<{ label: string; isDark?: boolean }> = ({ label, isDark }) => {
   const [balls] = useState(() => {
     const shuffled = [...BALL_COLORS].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3);
@@ -69,37 +70,37 @@ const PoolBallLoader: React.FC<{ label: string }> = ({ label }) => {
               transformOrigin: 'bottom center',
             }}
           >
-            <PoolBallSVG color={ball.main} num={ball.num} size={42} />
+            <PoolBallSVG color={ball.main} num={ball.num} size={42} isDark={isDark} />
           </div>
         ))}
       </div>
-      <LoaderText label={label} />
+      <LoaderText label={label} isDark={isDark} />
     </div>
   );
 };
 
 // Thin indigo arc spinner — matches the reference loading style
-const ArcSpinner: React.FC<{ label: string }> = ({ label }) => (
+const ArcSpinner: React.FC<{ label: string; isDark?: boolean }> = ({ label, isDark }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px' }}>
     <div
       style={{
         width: 44,
         height: 44,
         border: '3px solid transparent',
-        borderTopColor: '#4338CA',
-        borderRightColor: 'rgba(67,56,202,0.18)',
+        borderTopColor: isDark ? '#6366F1' : '#4338CA',
+        borderRightColor: isDark ? 'rgba(99,102,241,0.25)' : 'rgba(67,56,202,0.18)',
         borderBottomColor: 'transparent',
-        borderLeftColor: 'rgba(67,56,202,0.08)',
+        borderLeftColor: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(67,56,202,0.08)',
         borderRadius: '50%',
         animation: 'arcSpin 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite',
       }}
     />
-    <LoaderText label={label} />
+    <LoaderText label={label} isDark={isDark} />
   </div>
 );
 
 /* Shared label text block */
-const LoaderText: React.FC<{ label: string }> = ({ label }) => (
+const LoaderText: React.FC<{ label: string; isDark?: boolean }> = ({ label, isDark }) => (
   <p
     style={{
       fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -107,7 +108,7 @@ const LoaderText: React.FC<{ label: string }> = ({ label }) => (
       fontSize: '0.7rem',
       letterSpacing: '0.18em',
       textTransform: 'uppercase',
-      color: '#52525b',
+      color: isDark ? '#a1a1aa' : '#52525b',
       margin: 0,
       textAlign: 'center',
     }}
@@ -122,6 +123,7 @@ export type LoadingVariant = 'quick' | 'game' | 'results' | 'again';
 interface LoadingScreenProps {
   variant: LoadingVariant;
   visible: boolean;
+  isDark?: boolean;
 }
 
 const VARIANT_CONFIG: Record<
@@ -135,7 +137,7 @@ const VARIANT_CONFIG: Record<
 };
 
 // Main loading screen overlay
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ variant, visible }) => {
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ variant, visible, isDark = false }) => {
   const [show, setShow] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
 
@@ -167,8 +169,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ variant, visible }
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        /* Subtle light tint — app content visible but softened */
-        backgroundColor: 'rgba(244, 242, 236, 0.82)',
+        /* Light mode keeps exact soft tint; Dark mode uses matte dark overlay */
+        backgroundColor: isDark ? 'rgba(18, 18, 20, 0.88)' : 'rgba(244, 242, 236, 0.82)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',
@@ -180,8 +182,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ variant, visible }
       }}
     >
       {cfg.useBalls
-        ? <PoolBallLoader label={cfg.label} />
-        : <ArcSpinner label={cfg.label} />
+        ? <PoolBallLoader label={cfg.label} isDark={isDark} />
+        : <ArcSpinner label={cfg.label} isDark={isDark} />
       }
 
       {/* Injected keyframes */}
