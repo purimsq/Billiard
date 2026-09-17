@@ -1,4 +1,4 @@
-const CACHE_NAME = 'billiard-pwa-v4';
+const CACHE_NAME = 'billiard-pwa-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -41,8 +41,13 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  // Never cache version check manifest or reachability probes
-  if (url.pathname === '/version.json' || url.searchParams.has('_probe') || url.searchParams.has('_t')) {
+  // Never cache version check manifest, reachability probes, or audio streaming files
+  if (
+    url.pathname === '/version.json' || 
+    url.pathname.startsWith('/sounds/') || 
+    url.searchParams.has('_probe') || 
+    url.searchParams.has('_t')
+  ) {
     return;
   }
 

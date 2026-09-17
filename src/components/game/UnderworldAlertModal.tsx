@@ -1,4 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import {
+  playUnderworldAlertSound,
+  playTypewriterKeyClick,
+  preloadUnderworldSounds,
+} from '@/lib/underworldAudio';
 
 export type UnderworldAlertType = 'first_death' | 'companion_death' | 'resurrection' | 're_death';
 
@@ -15,6 +20,7 @@ interface UnderworldAlertModalProps {
   alert: UnderworldAlertData | null;
   onSequenceComplete: (alert: UnderworldAlertData) => void;
   isDark?: boolean;
+  soundEffectsEnabled?: boolean;
 }
 
 const SOLO_DEATH_QUOTES = [
@@ -60,6 +66,7 @@ export const UnderworldAlertModal: React.FC<UnderworldAlertModalProps> = ({
   alert,
   onSequenceComplete,
   isDark = false,
+  soundEffectsEnabled = false,
 }) => {
   // Compute quote via useMemo to avoid cascading renders
   const quote = useMemo(() => {
@@ -83,8 +90,20 @@ export const UnderworldAlertModal: React.FC<UnderworldAlertModalProps> = ({
   );
   const [charCount, setCharCount] = useState<number>(0);
 
+  // Preload underworld sound effects on mount only if sound is enabled
+  useEffect(() => {
+    if (soundEffectsEnabled) {
+      preloadUnderworldSounds();
+    }
+  }, [soundEffectsEnabled]);
+
   useEffect(() => {
     if (!alert) return;
+
+    // Play corresponding underworld audio stinger as content reveals (if sound enabled)
+    if (soundEffectsEnabled) {
+      playUnderworldAlertSound(alert.type);
+    }
 
     // Step 1: Light background fades in, then content appears
     const contentTimer = setTimeout(() => {
@@ -100,13 +119,18 @@ export const UnderworldAlertModal: React.FC<UnderworldAlertModalProps> = ({
       clearTimeout(contentTimer);
       clearTimeout(typingStartTimer);
     };
-  }, [alert]);
+  }, [alert, soundEffectsEnabled]);
 
-  // Step 3: Deliberate typewriter effect (~64ms per character)
+  // Step 3: Deliberate typewriter effect (~64ms per character) with typewriter sound click
   useEffect(() => {
     if (stage !== 'typing' || !quote) return;
 
     if (charCount < quote.length) {
+      const nextChar = quote[charCount];
+      if (soundEffectsEnabled && nextChar && nextChar.trim() !== '') {
+        playTypewriterKeyClick();
+      }
+
       const typeTimer = setTimeout(() => {
         setCharCount((prev) => prev + 1);
       }, 64); // Slower, dramatic typing cadence
@@ -118,7 +142,7 @@ export const UnderworldAlertModal: React.FC<UnderworldAlertModalProps> = ({
       }, 2500); // 2.5s pause to read
       return () => clearTimeout(pauseTimer);
     }
-  }, [stage, charCount, quote]);
+  }, [stage, charCount, quote, soundEffectsEnabled]);
 
   // Step 4: Fade out and signal sequence complete
   useEffect(() => {

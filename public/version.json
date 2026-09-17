@@ -1,11 +1,11 @@
 {
-  "version": "1.2.1",
-  "buildDate": "September 16, 2026",
+  "version": "1.3.0",
+  "buildDate": "September 17, 2026",
   "minSupportedVersion": "1.0.0",
   "changelog": [
-    "Modified UI: Updated Billiard title gradient to red-black-purple in light theme and radiant red-blue-purple in dark theme",
-    "Fixed: Official draw and tie support on live and final scoreboards with shared leader crowns and co-champions",
-    "Fixed: System update checks now verify real network reachability (depleted data bundle & captive portal detection)",
-    "Fixed: Battery conservation preventing repeated background update loops while using the app"
+    "Added: Underworld Dialogue sound effects with dedicated audio settings tree and persistence",
+    "Added: Realistic broken glass card shatter and soft dreaming harp restoration audio",
+    "Modified UI: Nested sound effects control with disabled state when Underworld Dialogue is OFF",
+    "Fixed: Audio streaming bypass in Service Worker for smooth PWA mobile audio playback"
   ]
 }

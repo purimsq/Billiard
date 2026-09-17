@@ -7,6 +7,7 @@ import { PoolBall } from '../ui/PoolBall';
 import { AdvancedFlameBorder } from '../ui/AdvancedFlameBorder';
 import { UnderworldAlertModal, UnderworldAlertData } from './UnderworldAlertModal';
 import { requestScreenWakeLock, releaseScreenWakeLock, isStandaloneMode } from '@/lib/wakeLockManager';
+import { playCardBreakSound, playCardRepairSound } from '@/lib/underworldAudio';
 
 interface LiveGameViewProps {
   session: GameSession;
@@ -127,6 +128,7 @@ export function LiveGameView({
   };
 
   const isDialogueEnabled = settings?.underworldDialogue ?? false;
+  const isUnderworldSoundEnabled = isDialogueEnabled && (settings?.underworldSoundEffects ?? false);
 
   const handleConfirmScore = () => {
     if (!selectedPlayer) return;
@@ -244,6 +246,11 @@ export function LiveGameView({
       // Trigger huge flash of light from the whole card for ~2 seconds
       setResurrectingPlayerId(completedAlert.playerId);
 
+      // Play celestial card repair sound only if sound is enabled
+      if (isUnderworldSoundEnabled) {
+        playCardRepairSound();
+      }
+
       // Halfway through the flash (at 900ms), clear cracks so they dissolve under the light
       setTimeout(() => {
         setCrackedPlayerIds((prev) => {
@@ -258,7 +265,10 @@ export function LiveGameView({
         setResurrectingPlayerId(null);
       }, 2300);
     } else {
-      // Player died -> card cracks with dramatic, slower fracture shudder!
+      // Player died -> play sharp card break sound effect only if sound is enabled
+      if (isUnderworldSoundEnabled) {
+        playCardBreakSound();
+      }
       setCrackedPlayerIds((prev) => new Set([...prev, completedAlert.playerId]));
       setRecentlyCrackedPlayerId(completedAlert.playerId);
       setTimeout(() => setRecentlyCrackedPlayerId(null), 1200);
@@ -317,6 +327,7 @@ export function LiveGameView({
           alert={underworldAlert}
           onSequenceComplete={handleSequenceComplete}
           isDark={isDark}
+          soundEffectsEnabled={isUnderworldSoundEnabled}
         />
       )}
 

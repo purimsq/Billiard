@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   darkMode: false,
   feltTheme: 'classic',
   underworldDialogue: false, // OFF by default as instructed
+  underworldSoundEffects: false, // OFF by default (child tree setting)
   keepScreenAwake: false,
   hotHandStreaks: true,
   showLeaderCrown: true,

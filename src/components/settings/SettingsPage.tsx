@@ -19,6 +19,8 @@ import {
   Package,
   CheckCircle2,
   ArrowDownCircle,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { AppSettings } from '@/types/settings';
 import {
@@ -53,6 +55,8 @@ interface SettingToggleSwitchProps {
   checked: boolean;
   isLoading: boolean;
   disabled?: boolean;
+  disabledTitle?: string;
+  disabledIcon?: React.ReactNode;
   activeColor?: string;
   activeTextColor?: string;
   isDark: boolean;
@@ -62,6 +66,8 @@ const SettingToggleSwitch: React.FC<SettingToggleSwitchProps> = ({
   checked,
   isLoading,
   disabled = false,
+  disabledTitle = 'Requires Add to Home Screen',
+  disabledIcon,
   activeColor = 'bg-indigo-600',
   activeTextColor = 'text-indigo-600',
   isDark,
@@ -72,10 +78,10 @@ const SettingToggleSwitch: React.FC<SettingToggleSwitchProps> = ({
         className={`w-12 h-6 rounded-full transition-all relative flex items-center px-0.5 flex-shrink-0 cursor-not-allowed opacity-50 ${
           isDark ? 'bg-zinc-800' : 'bg-zinc-200'
         }`}
-        title="Requires Add to Home Screen"
+        title={disabledTitle}
       >
         <div className="w-5 h-5 rounded-full bg-zinc-400 dark:bg-zinc-600 shadow-sm flex items-center justify-center">
-          <Lock className="w-2.5 h-2.5 text-zinc-100 dark:text-zinc-300" />
+          {disabledIcon || <Lock className="w-2.5 h-2.5 text-zinc-100 dark:text-zinc-300" />}
         </div>
       </div>
     );
@@ -207,6 +213,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     // Safety guard: keepScreenAwake is strictly only activatable in standalone mode
     if (key === 'keepScreenAwake' && !isStandalone) {
       handleScrollToInstructions();
+      return;
+    }
+
+    // Safety guard: underworldSoundEffects is only toggleable when underworldDialogue is ON
+    if (key === 'underworldSoundEffects' && !settings.underworldDialogue) {
+      setToastMessage('Enable Underworld Dialogue first to activate sound effects.');
+      setTimeout(() => setToastMessage(null), 3000);
       return;
     }
 
@@ -515,6 +528,103 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <SettingToggleSwitch
               checked={settings.underworldDialogue}
               isLoading={loadingKey === 'underworldDialogue'}
+              activeColor="bg-rose-600"
+              activeTextColor="text-rose-600"
+              isDark={isDark}
+            />
+          </div>
+
+          {/* Underworld Sound Effects (Child Tree Setting) */}
+          <div
+            onClick={() => {
+              if (!settings.underworldDialogue) return;
+              handleToggle('underworldSoundEffects');
+            }}
+            className={`p-4 sm:p-5 pl-8 sm:pl-11 flex items-center justify-between gap-4 transition relative ${
+              !settings.underworldDialogue
+                ? 'opacity-40 cursor-not-allowed select-none'
+                : loadingKey === 'underworldSoundEffects'
+                ? 'cursor-wait opacity-90'
+                : 'cursor-pointer ' + (isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-zinc-50/70')
+            } ${
+              isDark ? 'bg-zinc-950/40' : 'bg-zinc-50/50'
+            }`}
+          >
+            {/* Tree Branch Visual Connector */}
+            <div
+              className={`absolute left-4 sm:left-6 top-0 bottom-1/2 w-3.5 border-l-2 border-b-2 rounded-bl-lg pointer-events-none transition-colors ${
+                settings.underworldDialogue
+                  ? isDark
+                    ? 'border-rose-500/50'
+                    : 'border-rose-400/60'
+                  : isDark
+                  ? 'border-zinc-700/40'
+                  : 'border-zinc-300/60'
+              }`}
+            />
+
+            <div className="space-y-1 pr-2 pl-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Volume2
+                    className={`w-3.5 h-3.5 ${
+                      !settings.underworldDialogue
+                        ? 'text-zinc-500'
+                        : settings.underworldSoundEffects
+                        ? 'text-rose-500'
+                        : isDark
+                        ? 'text-zinc-400'
+                        : 'text-zinc-500'
+                    }`}
+                  />
+                  <h5 className="font-extrabold text-xs sm:text-sm leading-tight">
+                    Underworld Sound Effects
+                  </h5>
+                </div>
+
+                {loadingKey === 'underworldSoundEffects' ? (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-rose-500/20 text-rose-500 animate-pulse flex items-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" /> SAVING...
+                  </span>
+                ) : !settings.underworldDialogue ? (
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                      isDark
+                        ? 'bg-zinc-800/80 text-zinc-500 border border-zinc-700/60'
+                        : 'bg-zinc-200/70 text-zinc-500 border border-zinc-300/60'
+                    }`}
+                  >
+                    DISABLED
+                  </span>
+                ) : !settings.underworldSoundEffects ? (
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                      isDark
+                        ? 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                        : 'bg-zinc-100 text-zinc-600 border border-zinc-200'
+                    }`}
+                  >
+                    OFF
+                  </span>
+                ) : null}
+              </div>
+              <p
+                className={`text-xs font-medium leading-relaxed ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
+                {!settings.underworldDialogue
+                  ? 'Requires Underworld Dialogue to be enabled first.'
+                  : 'Funeral tolls, broken glass, dreaming harp, and mechanical typewriter audio.'}
+              </p>
+            </div>
+
+            <SettingToggleSwitch
+              checked={settings.underworldDialogue && settings.underworldSoundEffects}
+              isLoading={loadingKey === 'underworldSoundEffects'}
+              disabled={!settings.underworldDialogue}
+              disabledTitle="Requires Underworld Dialogue to be ON"
+              disabledIcon={<VolumeX className="w-2.5 h-2.5 text-zinc-300 dark:text-zinc-400" />}
               activeColor="bg-rose-600"
               activeTextColor="text-rose-600"
               isDark={isDark}

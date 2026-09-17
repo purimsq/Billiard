@@ -12,10 +12,20 @@ export interface UpdateChangelogItem {
   highlights: string[];
 }
 
-export const BASE_APP_VERSION = '1.2.0';
-export const BUILD_DATE = 'September 16, 2026';
+export const BASE_APP_VERSION = '1.3.0';
+export const BUILD_DATE = 'September 17, 2026';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
+  {
+    version: 'v1.3.0',
+    date: 'September 17, 2026',
+    highlights: [
+      'Added: Underworld Dialogue sound effects with dedicated audio settings tree and persistence',
+      'Added: Realistic broken glass card shatter and soft dreaming harp restoration audio',
+      'Modified UI: Nested sound effects control with disabled state when Underworld Dialogue is OFF',
+      'Fixed: Audio streaming bypass in Service Worker for smooth PWA mobile audio playback',
+    ],
+  },
   {
     version: 'v1.2.1',
     date: 'September 16, 2026',
@@ -300,10 +310,10 @@ export async function runCheckForUpdates(options?: {
 
   // UPDATE AVAILABLE: Begin genuine background installation
   const targetVersion = forceSimulateNewVersion
-    ? '1.2.1'
+    ? '1.3.0'
     : hasVersionDiff
     ? remoteVersion
-    : '1.2.1';
+    : '1.3.0';
 
   clearUpdateTimers();
   updateState({
