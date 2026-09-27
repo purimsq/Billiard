@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Users,
   ChevronRight,
+  ChevronDown,
   Check,
   Trash2,
   Lock,
@@ -40,9 +41,24 @@ export const GameHistoryPage: React.FC<GameHistoryPageProps> = ({ onBack, isDark
     if (typeof window === 'undefined') return 20;
     return getCasualHistoryLimit();
   });
+  const [isLimitDropdownOpen, setIsLimitDropdownOpen] = useState<boolean>(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState<boolean>(false);
   const [targetLimit, setTargetLimit] = useState<number>(20);
   const [hasAcknowledgedStorage, setHasAcknowledgedStorage] = useState<boolean>(false);
+  const retentionDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        retentionDropdownRef.current &&
+        !retentionDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsLimitDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const reloadHistory = () => {
     setHistory(getGameHistory());
@@ -351,20 +367,93 @@ export const GameHistoryPage: React.FC<GameHistoryPageProps> = ({ onBack, isDark
           </button>
         </div>
 
-        {/* Clear Option (Casual Only) or Protected Indicator (Ranked) */}
-        <div>
+        {/* Actions: Retention Tag Dropdown & Clear (Casual) or Protected Badge (Ranked) */}
+        <div className="flex items-center gap-2">
           {activeTab === 'casual' ? (
-            casualGames.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setIsClearModalOpen(true)}
-                className="text-[11px] font-medium text-zinc-400 hover:text-rose-500 transition flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-rose-500/10"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Clear Casual Records</span>
-                <span className="sm:hidden">Clear All</span>
-              </button>
-            ) : null
+            <>
+              {/* Sleek Retention Tag with Dropdown Menu */}
+              <div className="relative" ref={retentionDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsLimitDropdownOpen(!isLimitDropdownOpen)}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                    isDark
+                      ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
+                      : 'bg-white border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:border-zinc-300 shadow-2xs'
+                  }`}
+                  title={`Casual retention limit: ${casualLimit} games max`}
+                >
+                  <HardDrive className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{casualLimit} Max</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isLimitDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isLimitDropdownOpen && (
+                  <div
+                    className={`absolute right-0 top-full mt-1.5 w-60 rounded-2xl border p-2 shadow-2xl z-40 animate-fadeIn ${
+                      isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
+                    }`}
+                  >
+                    <div className="px-2.5 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider block text-zinc-400">
+                        History Retention
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        {casualGames.length} / {casualLimit} Games Retained
+                      </span>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      {[10, 20, 30, 40, 50].map((lim) => {
+                        const isCurrent = casualLimit === lim;
+                        return (
+                          <button
+                            key={lim}
+                            type="button"
+                            onClick={() => {
+                              setIsLimitDropdownOpen(false);
+                              handleSelectLimit(lim);
+                            }}
+                            className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                              isCurrent
+                                ? isDark
+                                  ? 'bg-emerald-500/15 text-emerald-400 font-bold'
+                                  : 'bg-emerald-50 text-emerald-600 font-bold'
+                                : isDark
+                                ? 'hover:bg-zinc-800 text-zinc-300'
+                                : 'hover:bg-zinc-100 text-zinc-700'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>{lim} Matches</span>
+                              {lim === 20 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-500">
+                                  Default
+                                </span>
+                              )}
+                            </span>
+                            {isCurrent && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {casualGames.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsClearModalOpen(true)}
+                  className="text-[11px] font-medium text-zinc-400 hover:text-rose-500 transition flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-rose-500/10"
+                  title="Clear all casual records"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+              )}
+            </>
           ) : (
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold select-none ${
@@ -381,77 +470,6 @@ export const GameHistoryPage: React.FC<GameHistoryPageProps> = ({ onBack, isDark
           )}
         </div>
       </div>
-
-      {/* Casual Local Storage & Retention Limit Banner */}
-      {activeTab === 'casual' && (
-        <div
-          className={`p-3.5 rounded-2xl border transition-colors ${
-            isDark
-              ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300'
-              : 'bg-zinc-50 border-zinc-200 text-zinc-700'
-          }`}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  isDark ? 'bg-zinc-800 text-emerald-400' : 'bg-white text-emerald-600 shadow-2xs'
-                }`}
-              >
-                <HardDrive className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-wider">
-                    Casual Game Retention
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                      casualGames.length >= casualLimit
-                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
-                        : isDark
-                        ? 'bg-zinc-800 text-zinc-400'
-                        : 'bg-zinc-200 text-zinc-600'
-                    }`}
-                  >
-                    {casualGames.length} / {casualLimit} Games
-                  </span>
-                </div>
-                <p className={`text-[11px] leading-tight ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                  {casualGames.length >= casualLimit
-                    ? `Storage limit reached. Playing game ${casualLimit + 1} will auto-delete the oldest match.`
-                    : `Oldest matches auto-purged on rolling FIFO basis once ${casualLimit} games are reached.`}
-                </p>
-              </div>
-            </div>
-
-            {/* Limit Selector Pills (10, 20 [Default], 30, 40, 50) */}
-            <div className="flex items-center gap-1 self-start sm:self-center">
-              <span className={`text-[10px] font-bold uppercase tracking-wider mr-1 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                Limit:
-              </span>
-              {[10, 20, 30, 40, 50].map((lim) => (
-                <button
-                  key={lim}
-                  type="button"
-                  onClick={() => handleSelectLimit(lim)}
-                  className={`px-2 py-1 rounded-lg text-xs font-mono font-black transition-all ${
-                    casualLimit === lim
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : isDark
-                      ? 'bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200'
-                      : 'bg-zinc-200/80 hover:bg-zinc-300 text-zinc-600 hover:text-zinc-900'
-                  }`}
-                  title={lim === 20 ? 'Default 20 matches' : `Retain up to ${lim} matches`}
-                >
-                  {lim}
-                  {lim === 20 && <span className="block text-[8px] leading-none opacity-80">DEF</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Match Fixture List (Google Sports / Search Style: Clean, Direct on Page, Compact) */}
       <div className="space-y-3">
