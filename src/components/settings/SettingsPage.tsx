@@ -21,8 +21,17 @@ import {
   ArrowDownCircle,
   Volume2,
   VolumeX,
+  ChevronRight,
 } from 'lucide-react';
 import { AppSettings } from '@/types/settings';
+import {
+  getLocalDeviceProfile,
+  RankedPlayerProfile,
+  getVerifiedRoster,
+} from '@/lib/rankedSync';
+import { OnlineIdentitySetupModal } from '@/components/profile/OnlineIdentitySetupModal';
+import { PlayerQrCodeModal } from '@/components/profile/PlayerQrCodeModal';
+import { CompetitorProfileCard } from '@/components/profile/CompetitorProfileCard';
 import {
   isStandaloneMode,
   detectPlatform,
@@ -43,11 +52,14 @@ import {
   RECENT_CHANGELOG,
   BUILD_DATE,
 } from '@/lib/systemUpdateManager';
+import { GameHistoryPage } from './GameHistoryPage';
+import { CompetitorRosterPage } from './CompetitorRosterPage';
 
 interface SettingsPageProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
   onBack: () => void;
+  onOpenHistory?: () => void;
   returnToViewTitle?: string;
 }
 
@@ -120,6 +132,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   settings,
   onUpdateSettings,
   onBack,
+  onOpenHistory,
   returnToViewTitle = 'Home',
 }) => {
   const [loadingKey, setLoadingKey] = useState<keyof AppSettings | null>(null);
@@ -246,6 +259,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const isDark = settings.darkMode;
+  const [internalHistoryOpen, setInternalHistoryOpen] = useState<boolean>(false);
+  const [isRosterOpen, setIsRosterOpen] = useState<boolean>(false);
+  const [deviceProfile, setDeviceProfile] = useState<RankedPlayerProfile | null>(() => getLocalDeviceProfile());
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
+  const [isInitiatingRanked, setIsInitiatingRanked] = useState<boolean>(false);
+
+  const handleOpenHistory = () => {
+    if (onOpenHistory) {
+      onOpenHistory();
+    } else {
+      setInternalHistoryOpen(true);
+    }
+  };
+
+  if (internalHistoryOpen) {
+    return <GameHistoryPage onBack={() => setInternalHistoryOpen(false)} isDark={isDark} />;
+  }
+
+  if (isRosterOpen) {
+    return <CompetitorRosterPage onBack={() => setIsRosterOpen(false)} isDark={isDark} />;
+  }
 
   return (
     <div
@@ -310,6 +345,115 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <p className={`text-xs font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
           Configure theme display, gameplay drama, screen wake lock, and table options.
         </p>
+      </div>
+
+      {/* SECTION: ONLINE IDENTITY & PROFILE (JUST ABOVE THEME & DISPLAY) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3
+            className={`text-[11px] font-extrabold uppercase tracking-wider ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}
+          >
+            Online Identity
+          </h3>
+          {deviceProfile && deviceProfile.username ? (
+            <span className="text-[10px] font-extrabold text-emerald-500 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Ranked Ready
+            </span>
+          ) : !network.hasInternet ? (
+            <span className="text-[10px] font-extrabold text-rose-500 flex items-center gap-1">
+              <WifiOff className="w-3 h-3" /> Offline (Internet Required)
+            </span>
+          ) : (
+            <span className="text-[10px] font-extrabold text-indigo-500 flex items-center gap-1">
+              <Wifi className="w-3 h-3" /> Online
+            </span>
+          )}
+        </div>
+
+        {/* If profile NOT yet set up: Prominent Card to Enable Online Play */}
+        {!deviceProfile || !deviceProfile.username ? (
+          <div
+            className={`p-4 sm:p-5 rounded-3xl border transition-all ${
+              isDark
+                ? 'bg-gradient-to-br from-zinc-900 via-zinc-900 to-indigo-950/40 border-zinc-800 shadow-lg shadow-indigo-950/10'
+                : 'bg-gradient-to-br from-white via-white to-indigo-50/70 border-zinc-200/90 shadow-sm'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1 pr-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base sm:text-lg">⚔️</span>
+                  <h4 className="font-black text-sm sm:text-base leading-tight">
+                    Enable Online Ranked Play
+                  </h4>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-amber-500/15 text-amber-500 border border-amber-500/25">
+                    Official
+                  </span>
+                </div>
+                <p
+                  className={`text-xs font-medium leading-relaxed ${
+                    isDark ? 'text-zinc-400' : 'text-zinc-500'
+                  }`}
+                >
+                  Set up your unique username, 4-digit PIN, and tag to compete in ranked matches, sync your rating to the cloud, and unlock your player QR code.
+                </p>
+                {!network.hasInternet && (
+                  <p className="text-[11px] font-bold text-rose-500 flex items-center gap-1 pt-0.5">
+                    <WifiOff className="w-3 h-3" /> Connect to the internet to create your online identity.
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (network.hasInternet && !isInitiatingRanked) {
+                    setIsInitiatingRanked(true);
+                    setTimeout(() => {
+                      setIsInitiatingRanked(false);
+                      setIsSetupModalOpen(true);
+                    }, 1200);
+                  }
+                }}
+                disabled={!network.hasInternet || isInitiatingRanked}
+                className={`py-3 px-5 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all flex-shrink-0 shadow-md ${
+                  isInitiatingRanked
+                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/50 animate-pulse cursor-wait'
+                    : network.hasInternet
+                    ? 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-indigo-600/30 cursor-pointer'
+                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50 border border-zinc-700/60'
+                }`}
+              >
+                {isInitiatingRanked ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Connecting Server...</span>
+                  </>
+                ) : network.hasInternet ? (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>Join Ranked</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-4 h-4" />
+                    <span>Offline</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Official Billiard Competitor Pass Card */
+          <CompetitorProfileCard
+            profile={deviceProfile}
+            isDark={isDark}
+            onOpenQr={() => setIsQrModalOpen(true)}
+          />
+        )}
       </div>
 
       {/* SECTION 1: THEME & DISPLAY */}
@@ -709,6 +853,99 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               activeTextColor="text-amber-600"
               isDark={isDark}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: MATCH RECORDS & ACTIVITY */}
+      <div className="space-y-2">
+        <h3
+          className={`text-[11px] font-extrabold uppercase tracking-wider px-1 ${
+            isDark ? 'text-zinc-400' : 'text-zinc-500'
+          }`}
+        >
+          Match Records &amp; Activity
+        </h3>
+
+        <div
+          className={`rounded-3xl border shadow-sm divide-y overflow-hidden transition-colors ${
+            isDark
+              ? 'bg-zinc-900 border-zinc-800 divide-zinc-800'
+              : 'bg-white border-zinc-200/90 divide-zinc-100'
+          }`}
+        >
+          {/* Game History */}
+          <div
+            onClick={handleOpenHistory}
+            className={`p-4 sm:p-5 flex items-center justify-between gap-4 transition cursor-pointer group ${
+              isDark ? 'hover:bg-zinc-800/60' : 'hover:bg-zinc-50/80'
+            }`}
+          >
+            <div className="space-y-1 pr-2">
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-sm sm:text-base leading-tight">
+                  Game History
+                </h4>
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                    isDark
+                      ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                      : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                  }`}
+                >
+                  Casual &amp; Ranked
+                </span>
+              </div>
+              <p
+                className={`text-xs font-medium leading-relaxed ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
+                Review past match outcomes, winner podiums, scoreboards, and shot timelines.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-shrink-0 text-zinc-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              <span className="text-xs font-bold hidden sm:inline">View</span>
+              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </div>
+          </div>
+
+          {/* Competitor Roster (Directly below Game History in same category) */}
+          <div
+            onClick={() => setIsRosterOpen(true)}
+            className={`p-4 sm:p-5 flex items-center justify-between gap-4 transition cursor-pointer group ${
+              isDark ? 'hover:bg-zinc-800/60' : 'hover:bg-zinc-50/80'
+            }`}
+          >
+            <div className="space-y-1 pr-2">
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-sm sm:text-base leading-tight">
+                  Competitor Roster
+                </h4>
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                    isDark
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  }`}
+                >
+                  {typeof window !== 'undefined' ? `${getVerifiedRoster().length} Players` : 'Offline Verified'}
+                </span>
+              </div>
+              <p
+                className={`text-xs font-medium leading-relaxed ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}
+              >
+                Manage frequent opponents, verify offline identities, search database, and view competitor profiles.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-shrink-0 text-zinc-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+              <span className="text-xs font-bold hidden sm:inline">Manage</span>
+              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </div>
           </div>
         </div>
       </div>
@@ -1309,6 +1546,30 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <span>DONE & RETURN TO {returnToViewTitle.toUpperCase()}</span>
         </button>
       </div>
+
+      {/* 6-Step Online Identity Setup Modal */}
+      {isSetupModalOpen && (
+        <OnlineIdentitySetupModal
+          isOpen={isSetupModalOpen}
+          onClose={() => setIsSetupModalOpen(false)}
+          onComplete={(newProfile) => {
+            setDeviceProfile(newProfile);
+            setToastMessage(`Ranked Identity Activated: ${newProfile.tag}`);
+            setTimeout(() => setToastMessage(null), 3500);
+          }}
+          isDark={isDark}
+        />
+      )}
+
+      {/* QR Code Pass Modal */}
+      {isQrModalOpen && deviceProfile && (
+        <PlayerQrCodeModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          profile={deviceProfile}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 };

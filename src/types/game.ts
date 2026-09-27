@@ -1,4 +1,5 @@
 export type GameState = 'home' | 'setup' | 'live' | 'ended';
+export type GameMode = 'casual' | 'ranked';
 
 export interface Player {
   id: string;
@@ -6,6 +7,10 @@ export interface Player {
   score: number;
   color: string;
   avatarBg: string;
+  username?: string;
+  discriminator?: string;
+  rating?: number;
+  isVerified?: boolean;
 }
 
 export interface Transaction {
@@ -24,6 +29,7 @@ export interface GameSession {
   players: Player[];
   history: Transaction[];
   status: GameState;
+  mode?: GameMode; // 'casual' | 'ranked' (defaults to 'casual')
   createdAt: number;
   updatedAt: number;
 }

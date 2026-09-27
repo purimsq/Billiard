@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Is the user authenticated (including Firebase anonymous auth)?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Players Collection: Official competitor profiles, ratings & credentials
+    match /players/{playerId} {
+      // Any authenticated player can read profiles for tournament tables and search
+      allow read: if isAuthenticated();
+
+      // Authenticated users can create their own competitor profile
+      allow create: if isAuthenticated() &&
+                    request.resource.data.username is string &&
+                    request.resource.data.username.size() >= 2 &&
+                    request.resource.data.discriminator is string &&
+                    request.resource.data.discriminator.size() == 4;
+
+      // Authenticated users can update profile details and match statistics
+      allow update: if isAuthenticated();
+
+      // Prevent permanent deletion of competitor profiles from client
+      allow delete: if false;
+    }
+
+    // Ranked Matches Collection: Immutable official match results & audit logs
+    match /ranked_matches/{matchId} {
+      // Authenticated users can view match histories and competitor logs
+      allow read: if isAuthenticated();
+
+      // Authenticated users can log newly concluded matches
+      allow create: if isAuthenticated() &&
+                    request.resource.data.players is list &&
+                    request.resource.data.players.size() >= 2;
+
+      // Official match logs are immutable once recorded
+      allow update, delete: if false;
+    }
+  }
+}

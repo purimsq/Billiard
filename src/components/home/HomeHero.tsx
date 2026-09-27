@@ -9,6 +9,8 @@ interface HomeHeroProps {
   onClearSession: () => void;
   onScrollToRules?: () => void;
   onOpenSettings?: () => void;
+  onOpenTournamentTable?: () => void;
+  hasProfile?: boolean;
   isDark?: boolean;
 }
 
@@ -19,6 +21,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
   onClearSession,
   onScrollToRules,
   onOpenSettings,
+  onOpenTournamentTable,
+  hasProfile = false,
   isDark = false,
 }) => {
   return (
@@ -124,44 +128,85 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             </span>
           </button>
 
-          {/* GAME RULES Card */}
-          <button
-            onClick={onScrollToRules}
-            className={`p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border flex items-center justify-between group cursor-pointer h-20 sm:h-22 ${
-              isDark
-                ? 'rounded-3xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 hover:border-zinc-700 shadow-sm'
-                : 'felt-card border-zinc-200/90 bg-white'
-            }`}
-          >
-            <div className="space-y-0.5">
-              <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-widest block">
-                Scoring Guide
-              </span>
-              <h3
-                className={`font-black text-sm sm:text-base transition-colors leading-none ${
-                  isDark
-                    ? 'text-zinc-100 group-hover:text-amber-400'
-                    : 'text-zinc-900 group-hover:text-amber-600'
-                }`}
-              >
-                GAME RULES
-              </h3>
-              <p
-                className={`text-[10px] font-medium truncate ${
-                  isDark ? 'text-zinc-400' : 'text-zinc-500'
-                }`}
-              >
-                Ball values
-              </p>
-            </div>
-            <span
-              className={`text-sm font-black group-hover:translate-x-1 transition-transform pl-1 ${
-                isDark ? 'text-zinc-100' : 'text-zinc-900'
+          {/* TOURNAMENT TABLE Card (for profile users) OR GAME RULES Card (for non-profile users) */}
+          {hasProfile ? (
+            <button
+              onClick={onOpenTournamentTable}
+              className={`p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border flex items-center justify-between group cursor-pointer h-20 sm:h-22 ${
+                isDark
+                  ? 'rounded-3xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 hover:border-indigo-500/50 shadow-sm'
+                  : 'felt-card border-zinc-200/90 bg-white hover:border-indigo-300'
               }`}
             >
-              ↓
-            </span>
-          </button>
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest block flex items-center gap-1">
+                  <span>🏆</span>
+                  <span>Ranked Standings</span>
+                </span>
+                <h3
+                  className={`font-black text-sm sm:text-base transition-colors leading-none ${
+                    isDark
+                      ? 'text-zinc-100 group-hover:text-indigo-400'
+                      : 'text-zinc-900 group-hover:text-indigo-600'
+                  }`}
+                >
+                  TOURNAMENT TABLE
+                </h3>
+                <p
+                  className={`text-[10px] font-medium truncate ${
+                    isDark ? 'text-zinc-400' : 'text-zinc-500'
+                  }`}
+                >
+                  Live rankings
+                </p>
+              </div>
+              <span
+                className={`text-sm font-black group-hover:translate-x-1 transition-transform pl-1 ${
+                  isDark ? 'text-indigo-400' : 'text-indigo-600'
+                }`}
+              >
+                →
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onScrollToRules}
+              className={`p-3 sm:p-4 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] border flex items-center justify-between group cursor-pointer h-20 sm:h-22 ${
+                isDark
+                  ? 'rounded-3xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 hover:border-zinc-700 shadow-sm'
+                  : 'felt-card border-zinc-200/90 bg-white'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-widest block">
+                  Scoring Guide
+                </span>
+                <h3
+                  className={`font-black text-sm sm:text-base transition-colors leading-none ${
+                    isDark
+                      ? 'text-zinc-100 group-hover:text-amber-400'
+                      : 'text-zinc-900 group-hover:text-amber-600'
+                  }`}
+                >
+                  GAME RULES
+                </h3>
+                <p
+                  className={`text-[10px] font-medium truncate ${
+                    isDark ? 'text-zinc-400' : 'text-zinc-500'
+                  }`}
+                >
+                  Ball values
+                </p>
+              </div>
+              <span
+                className={`text-sm font-black group-hover:translate-x-1 transition-transform pl-1 ${
+                  isDark ? 'text-zinc-100' : 'text-zinc-900'
+                }`}
+              >
+                ↓
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

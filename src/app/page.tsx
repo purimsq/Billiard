@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
-import { GameSession, Player } from '@/types/game';
+import { GameSession, Player, GameMode } from '@/types/game';
 import { getActiveGame, saveActiveGame, clearActiveGame, saveGameToHistory } from '@/lib/storage';
 import { HomeHero } from '@/components/home/HomeHero';
 import { RulesCard } from '@/components/home/RulesCard';
@@ -10,12 +10,21 @@ import { LiveGameView } from '@/components/game/LiveGameView';
 import { EndGameModal } from '@/components/game/EndGameModal';
 import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
 import { SettingsPage } from '@/components/settings/SettingsPage';
+import { GameHistoryPage } from '@/components/settings/GameHistoryPage';
+import { TournamentTablePage } from '@/components/tournament/TournamentTablePage';
 import { GlobalUpdateBanner } from '@/components/ui/GlobalUpdateBanner';
 import { AppSettings } from '@/types/settings';
 import { getStoredSettings, saveStoredSettings, DEFAULT_SETTINGS } from '@/lib/settingsStorage';
 import { requestScreenWakeLock, releaseScreenWakeLock, isStandaloneMode } from '@/lib/wakeLockManager';
 import { runCheckForUpdates } from '@/lib/systemUpdateManager';
 import { checkRealInternetConnectivity } from '@/lib/networkReachability';
+import {
+  submitRankedMatch,
+  recordCasualMatchForProfiles,
+  flushPendingRankedSync,
+  getLocalDeviceProfile,
+  checkAndSyncTournamentResults,
+} from '@/lib/rankedSync';
 
 const emptySubscribe = () => () => {};
 
@@ -37,7 +46,7 @@ export default function Home() {
     return null;
   });
 
-  const [currentView, setCurrentView] = useState<'home' | 'live' | 'settings'>(() => {
+  const [currentView, setCurrentView] = useState<'home' | 'live' | 'settings' | 'history' | 'tournament'>(() => {
     if (typeof window !== 'undefined') {
       const saved = getActiveGame();
       if (saved && saved.players.length > 0 && saved.status === 'live') {
@@ -46,6 +55,24 @@ export default function Home() {
     }
     return 'home';
   });
+
+  const [hasProfile, setHasProfile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = getLocalDeviceProfile();
+      return Boolean(p && p.username);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const checkProfile = () => {
+      const p = getLocalDeviceProfile();
+      setHasProfile(Boolean(p && p.username));
+    };
+    checkProfile();
+    window.addEventListener('storage', checkProfile);
+    return () => window.removeEventListener('storage', checkProfile);
+  }, [currentView]);
 
   const [previousView, setPreviousView] = useState<'home' | 'live'>('home');
 
@@ -85,7 +112,7 @@ export default function Home() {
   };
 
   const handleOpenSettings = () => {
-    if (currentView !== 'settings') {
+    if (currentView === 'home' || currentView === 'live') {
       setPreviousView(currentView);
     }
     setCurrentView('settings');
@@ -93,6 +120,18 @@ export default function Home() {
 
   const handleBackFromSettings = () => {
     setCurrentView(previousView);
+  };
+
+  const handleOpenHistory = () => {
+    setCurrentView('history');
+  };
+
+  const handleBackFromHistory = () => {
+    setCurrentView('settings');
+  };
+
+  const handleOpenTournamentTable = () => {
+    setCurrentView('tournament');
   };
 
   // loading overlay state
@@ -119,9 +158,11 @@ export default function Home() {
       });
     }
 
-    // When entering the app, check if online and check for genuine updates
+    // When entering the app, check if online, flush pending ranked matches, check tournament results & updates
     checkRealInternetConnectivity().then((health) => {
       if (health.hasInternet) {
+        flushPendingRankedSync();
+        checkAndSyncTournamentResults({ isAutomatic: true });
         setTimeout(() => {
           runCheckForUpdates({ isAutomatic: true });
         }, 1800);
@@ -140,7 +181,7 @@ export default function Home() {
   };
 
   // confirm players in setup modal → full preparing game loader → go live
-  const handleStartGame = (players: Player[]) => {
+  const handleStartGame = (players: Player[], mode: GameMode = 'casual') => {
     setIsSetupOpen(false); // close the setup modal right away
     withLoader('game', randMs(3500, 5500), () => {
       const newSession: GameSession = {
@@ -148,6 +189,7 @@ export default function Home() {
         players,
         history: [],
         status: 'live',
+        mode,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -177,6 +219,13 @@ export default function Home() {
   const handleDoneEndGame = () => {
     if (activeSession) {
       saveGameToHistory(activeSession);
+      if (activeSession.mode === 'ranked') {
+        submitRankedMatch(activeSession).catch((err) => {
+          console.warn('[RankedSync] Match submission deferred/offline:', err);
+        });
+      } else {
+        recordCasualMatchForProfiles(activeSession);
+      }
     }
     clearActiveGame();
     setActiveSession(null);
@@ -184,17 +233,29 @@ export default function Home() {
     setCurrentView('home');
   };
 
-  // play again → brief rack up loader → reset scores and start fresh
+  // play again → brief rack up loader → save finished game, reset scores and start fresh
   const handlePlayAgain = () => {
     if (!activeSession) return;
+    const completedSession = { ...activeSession };
+    // Save the finished match to local history (and sync if ranked)
+    saveGameToHistory(completedSession);
+    if (completedSession.mode === 'ranked') {
+      submitRankedMatch(completedSession).catch((err) => {
+        console.warn('[RankedSync] Match submission deferred/offline:', err);
+      });
+    } else {
+      recordCasualMatchForProfiles(completedSession);
+    }
+
     setIsEndGameOpen(false);
     withLoader('again', randMs(2000, 3500), () => {
-      const resetPlayers = activeSession.players.map((p) => ({ ...p, score: 0 }));
+      const resetPlayers = completedSession.players.map((p) => ({ ...p, score: 0 }));
       const newSession: GameSession = {
         id: `game_${Date.now()}`,
         players: resetPlayers,
         history: [],
         status: 'live',
+        mode: completedSession.mode || 'casual',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -253,6 +314,8 @@ export default function Home() {
             onClearSession={handleClearSession}
             onScrollToRules={handleScrollToRules}
             onOpenSettings={handleOpenSettings}
+            onOpenTournamentTable={handleOpenTournamentTable}
+            hasProfile={hasProfile}
             isDark={settings.darkMode}
           />
           <RulesCard isDark={settings.darkMode} />
@@ -275,7 +338,24 @@ export default function Home() {
           settings={settings}
           onUpdateSettings={handleUpdateSettings}
           onBack={handleBackFromSettings}
+          onOpenHistory={handleOpenHistory}
           returnToViewTitle={previousView === 'live' ? 'Live Game' : 'Home'}
+        />
+      )}
+
+      {/* game history page (renders on the page, not a card/modal) */}
+      {currentView === 'history' && (
+        <GameHistoryPage
+          onBack={handleBackFromHistory}
+          isDark={settings.darkMode}
+        />
+      )}
+
+      {/* tournament table page */}
+      {currentView === 'tournament' && (
+        <TournamentTablePage
+          onBack={() => setCurrentView('home')}
+          isDark={settings.darkMode}
         />
       )}
 

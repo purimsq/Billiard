@@ -12,10 +12,32 @@ export interface UpdateChangelogItem {
   highlights: string[];
 }
 
-export const BASE_APP_VERSION = '1.3.0';
-export const BUILD_DATE = 'September 17, 2026';
+export const BASE_APP_VERSION = '1.4.1';
+export const BUILD_DATE = 'September 27, 2026';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
+  {
+    version: 'v1.4.1',
+    date: 'September 27, 2026',
+    highlights: [
+      'Smart ELO Engine: Points-Per-Game efficiency weighting, dynamic K-factor, and high break bonuses',
+      'Standard Base Rating: All new competitors start at 100 ELO with live performance scaling',
+      'Full Event Logging: Shot-by-shot event capture for both Casual and Ranked play',
+      'Production Readiness: Sample data purged, clean Firestore rules, and zero mock data',
+    ],
+  },
+  {
+    version: 'v1.4.0',
+    date: 'September 27, 2026',
+    highlights: [
+      'Ranked Circuit: Official ELO competitive matchmaking and live tournament standings',
+      'Verified Competitors: Digital Player Pass with QR code scanning and instant verification',
+      'Offline Competitor Roster: Verified 4-digit PIN footprints for offline play',
+      'Match Roster Management: Long-press competitor card to remove with instant re-selection',
+      'Automated Results Sync: Background tournament updates on app entry with last-updated timestamp',
+      'Production Readiness: Clean database connection, genuine match logging, and sample data purged',
+    ],
+  },
   {
     version: 'v1.3.0',
     date: 'September 17, 2026',
