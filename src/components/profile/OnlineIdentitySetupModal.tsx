@@ -11,8 +11,14 @@ import {
   User,
   AlertCircle,
   Camera,
+  QrCode,
+  Trophy,
+  ShieldCheck,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import QRCode from 'qrcode';
 import {
   allocateUniqueDiscriminator,
   registerPlayerProfile,
@@ -63,6 +69,12 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Post-Registration Onboarding / Confirmation State
+  const [createdProfile, setCreatedProfile] = useState<RankedPlayerProfile | null>(null);
+  const [hasUnderstood, setHasUnderstood] = useState<boolean>(false);
+  const [confirmError, setConfirmError] = useState<boolean>(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   // Debounced discriminator allocator for Step 1
   const allocationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -82,6 +94,95 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
         });
     }
   }, []);
+
+  // Generate QR Code preview on the post-creation confirmation screen
+  useEffect(() => {
+    if (!createdProfile || !qrCanvasRef.current) return;
+    const canvas = qrCanvasRef.current;
+    const payload =
+      createdProfile.qrData ||
+      JSON.stringify({
+        app: 'billiard',
+        type: 'player_profile',
+        id: createdProfile.id,
+        tag: createdProfile.tag || `${createdProfile.username} #${createdProfile.discriminator}`,
+        username: createdProfile.username,
+        discriminator: createdProfile.discriminator,
+        email: createdProfile.email || '',
+        rating: createdProfile.rating || 100,
+        createdAt: createdProfile.createdAt || Date.now(),
+      });
+
+    QRCode.toCanvas(canvas, payload, {
+      width: 280,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#09090b',
+        light: '#ffffff',
+      },
+    })
+      .then(() => {
+        if (!canvas) return;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.maxWidth = '130px';
+        canvas.style.maxHeight = '130px';
+        canvas.style.display = 'block';
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const radius = 26;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = createdProfile.color || '#6366f1';
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        const ballGrad = ctx.createRadialGradient(
+          cx - radius * 0.35,
+          cy - radius * 0.35,
+          radius * 0.1,
+          cx,
+          cy,
+          radius
+        );
+        ballGrad.addColorStop(0, '#27272a');
+        ballGrad.addColorStop(0.5, '#18181b');
+        ballGrad.addColorStop(1, '#09090b');
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = ballGrad;
+        ctx.fill();
+
+        // Specular highlight
+        ctx.beginPath();
+        ctx.arc(cx - radius * 0.3, cy - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fill();
+
+        // Number 8
+        ctx.font = `900 ${radius * 0.9}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('8', cx, cy + 1);
+        ctx.restore();
+      })
+      .catch((err) => {
+        console.warn('Failed to draw QR preview on confirmation screen:', err);
+      });
+  }, [createdProfile]);
 
   const requestCameraAccess = useCallback(async (): Promise<boolean> => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -116,7 +217,27 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
     setShowConfirmPin(false);
     setIsSubmitting(false);
     setErrorMessage(null);
+    setCreatedProfile(null);
+    setHasUnderstood(false);
+    setConfirmError(false);
     onClose();
+  };
+
+  const handleDismiss = () => {
+    if (createdProfile) {
+      onComplete(createdProfile);
+    }
+    handleModalClose();
+  };
+
+  const handleFinishSetup = () => {
+    if (!createdProfile) return;
+    if (!hasUnderstood) {
+      setConfirmError(true);
+      return;
+    }
+    onComplete(createdProfile);
+    handleModalClose();
   };
 
   // When username changes, allocate a unique short number
@@ -195,17 +316,19 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
       // Celebrate success
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 },
+          particleCount: 100,
+          spread: 80,
+          origin: { y: 0.5 },
           colors: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6'],
         });
       } catch {
         // Confetti ignore error
       }
 
-      onComplete(profile);
-      handleModalClose();
+      // Transition to Onboarding Confirmation Briefing
+      setCreatedProfile(profile);
+      setHasUnderstood(false);
+      setConfirmError(false);
     } catch (err: unknown) {
       console.error('Failed to save profile to database:', err);
       setErrorMessage(
@@ -239,8 +362,14 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               {/* Google-like Circular Brand Badge */}
-              <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-emerald-600/30 flex-shrink-0">
-                8
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shadow-md ${
+                  createdProfile
+                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-emerald-600/30'
+                    : 'bg-emerald-600 shadow-emerald-600/30'
+                } flex-shrink-0`}
+              >
+                {createdProfile ? <Sparkles className="w-4 h-4 text-white" /> : '8'}
               </div>
               <div>
                 <h3
@@ -248,20 +377,26 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
                     isDark ? 'text-white' : 'text-zinc-900'
                   }`}
                 >
-                  Billiard Identity
+                  {createdProfile ? 'Welcome to the Arena!' : 'Billiard Identity'}
                 </h3>
                 <p
                   className={`text-[11px] font-semibold ${
-                    isDark ? 'text-zinc-400' : 'text-zinc-500'
+                    createdProfile
+                      ? 'text-emerald-500'
+                      : isDark
+                      ? 'text-zinc-400'
+                      : 'text-zinc-500'
                   }`}
                 >
-                  Step {step} of 6 • {STEP_TITLES[step]}
+                  {createdProfile
+                    ? 'Account Created Successfully • Player Briefing'
+                    : `Step ${step} of 6 • ${STEP_TITLES[step]}`}
                 </p>
               </div>
             </div>
 
             <button
-              onClick={handleModalClose}
+              onClick={handleDismiss}
               disabled={isSubmitting}
               aria-label="Close"
               className={`p-2 rounded-full transition-all active:scale-90 ${
@@ -274,44 +409,51 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
             </button>
           </div>
 
-          {/* Stepper Track with Numbered Circles & Smooth Green Fill */}
-          <div className="mt-4 px-1 select-none">
-            <div className="relative flex items-center justify-between">
-              {/* Connector Track spanning from circle 1 center to circle 6 center */}
-              <div className="absolute left-3.5 sm:left-4 right-3.5 sm:right-4 top-1/2 -translate-y-1/2 h-1.5 overflow-hidden pointer-events-none rounded-full">
-                {/* Background Track Line */}
-                <div className={`w-full h-full rounded-full ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                {/* Active Green Fill Line - Smooth & moderate fluid animation */}
-                <div
-                  className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-all duration-700 ease-in-out"
-                  style={{ width: `${((step - 1) / 5) * 100}%` }}
-                />
-              </div>
-
-              {/* 6 Step Circles with Step Number Inside */}
-              {[1, 2, 3, 4, 5, 6].map((s) => {
-                const isCompleted = s < step;
-                const isCurrent = s === step;
-
-                return (
-                  <div
-                    key={s}
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-mono font-black text-xs relative z-10 transition-all duration-500 ease-in-out ${
-                      isCurrent
-                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-500/25 scale-110'
-                        : isCompleted
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : isDark
-                        ? 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-                        : 'bg-zinc-100 text-zinc-500 border border-zinc-300'
-                    }`}
-                  >
-                    {s}
-                  </div>
-                );
-              })}
+          {/* Stepper Track OR Completion Confirmation Bar */}
+          {createdProfile ? (
+            <div className="mt-3 py-1.5 px-3 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center gap-2 text-emerald-500 font-extrabold text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Official Competitor Pass Generated • Base 100 ELO Assigned</span>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 px-1 select-none">
+              <div className="relative flex items-center justify-between">
+                {/* Connector Track spanning from circle 1 center to circle 6 center */}
+                <div className="absolute left-3.5 sm:left-4 right-3.5 sm:right-4 top-1/2 -translate-y-1/2 h-1.5 overflow-hidden pointer-events-none rounded-full">
+                  {/* Background Track Line */}
+                  <div className={`w-full h-full rounded-full ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                  {/* Active Green Fill Line - Smooth & moderate fluid animation */}
+                  <div
+                    className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-all duration-700 ease-in-out"
+                    style={{ width: `${((step - 1) / 5) * 100}%` }}
+                  />
+                </div>
+
+                {/* 6 Step Circles with Step Number Inside */}
+                {[1, 2, 3, 4, 5, 6].map((s) => {
+                  const isCompleted = s < step;
+                  const isCurrent = s === step;
+
+                  return (
+                    <div
+                      key={s}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-mono font-black text-xs relative z-10 transition-all duration-500 ease-in-out ${
+                        isCurrent
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-500/25 scale-110'
+                          : isCompleted
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : isDark
+                          ? 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          : 'bg-zinc-100 text-zinc-500 border border-zinc-300'
+                      }`}
+                    >
+                      {s}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ================= SCROLLABLE CONTENT BODY ================= */}
@@ -324,8 +466,253 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
             </div>
           )}
 
-          {/* ================= STEP 1: UNIQUE USERNAME ================= */}
-          {step === 1 && (
+          {/* ================= POST-REGISTRATION ONBOARDING BRIEFING ================= */}
+          {createdProfile ? (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Congratulations Hero Banner */}
+              <div
+                className={`p-4 rounded-2xl border text-center space-y-2 relative overflow-hidden ${
+                  isDark
+                    ? 'bg-gradient-to-b from-emerald-950/30 to-zinc-900 border-emerald-800/40'
+                    : 'bg-gradient-to-b from-emerald-50 to-white border-emerald-200'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xl">🎉</span>
+                  <h4
+                    className={`text-base sm:text-lg font-black tracking-tight ${
+                      isDark ? 'text-white' : 'text-zinc-900'
+                    }`}
+                  >
+                    You are in the Tournament!
+                  </h4>
+                  <span className="text-xl">🏆</span>
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-black">
+                  <span>{createdProfile.tag || `${createdProfile.username} #${createdProfile.discriminator}`}</span>
+                  <span>•</span>
+                  <span>100 ELO Starting Rating</span>
+                </div>
+                <p
+                  className={`text-xs font-medium leading-relaxed ${
+                    isDark ? 'text-zinc-400' : 'text-zinc-600'
+                  }`}
+                >
+                  Your profile is officially registered in the cloud database. Please review how your personal QR code and matches work before entering the arena.
+                </p>
+              </div>
+
+              {/* CARD 1: Personal Competitor QR Pass & Why It Was Generated */}
+              <div
+                className={`p-4 rounded-2xl border space-y-3 ${
+                  isDark ? 'bg-zinc-800/50 border-zinc-700/80' : 'bg-white border-zinc-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5
+                      className={`text-xs font-black uppercase tracking-wider ${
+                        isDark ? 'text-zinc-200' : 'text-zinc-800'
+                      }`}
+                    >
+                      Your Personal QR Pass
+                    </h5>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">
+                      Instant match pairing &amp; competitor identity
+                    </p>
+                  </div>
+                </div>
+
+                {/* QR Canvas Display */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800">
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center flex-shrink-0">
+                    <canvas ref={qrCanvasRef} className="w-full h-full rounded-lg" />
+                  </div>
+                  <div className="space-y-1.5 text-left text-xs">
+                    <p
+                      className={`font-bold leading-tight ${
+                        isDark ? 'text-zinc-200' : 'text-zinc-800'
+                      }`}
+                    >
+                      Why was this generated?
+                    </p>
+                    <p
+                      className={`text-[11px] leading-relaxed ${
+                        isDark ? 'text-zinc-400' : 'text-zinc-600'
+                      }`}
+                    >
+                      This QR code is your verified player pass. Opponents or tournament referees simply scan it with their camera at pool tables to instantly link you into official <strong>Ranked Matches</strong>—no typing usernames or IDs.
+                    </p>
+                    <p className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 flex items-center gap-1">
+                      <span>💡 Re-open anytime from your Profile or the QR icon on top.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: How Ranked Mode Works (100 ELO & Smart Engine) */}
+              <div
+                className={`p-4 rounded-2xl border space-y-3 ${
+                  isDark ? 'bg-zinc-800/50 border-zinc-700/80' : 'bg-white border-zinc-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5
+                      className={`text-xs font-black uppercase tracking-wider ${
+                        isDark ? 'text-zinc-200' : 'text-zinc-800'
+                      }`}
+                    >
+                      How Ranked Mode Works (100 ELO)
+                    </h5>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">
+                      Official competitive tournament matches
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>100 ELO Starting Rating:</strong> You start on the Tournament Standings table at <strong>100 ELO</strong> alongside all contenders.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>Smart ELO Engine:</strong> Wins increase your rating, but our smart system also evaluates your <strong>Points-Per-Game efficiency</strong>, <strong>high breaks</strong>, and <strong>foul discipline</strong> (clean games earn bonus rating; high fouls deduct points).
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>Live Cloud Ledger:</strong> Every shot, foul, and victory is permanently recorded in the cloud and instantly updates the live tournament table.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: How Casual Mode Works */}
+              <div
+                className={`p-4 rounded-2xl border space-y-3 ${
+                  isDark ? 'bg-zinc-800/50 border-zinc-700/80' : 'bg-white border-zinc-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5
+                      className={`text-xs font-black uppercase tracking-wider ${
+                        isDark ? 'text-zinc-200' : 'text-zinc-800'
+                      }`}
+                    >
+                      How Casual Mode Works
+                    </h5>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">
+                      Relaxed local play &amp; practice
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>Zero ELO Risk:</strong> Casual games are for friendly rounds or drills. They <strong>never affect</strong> your official tournament ELO or ranking.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>Personal Stat Records:</strong> You can still link your profile in casual matches to track personal high breaks, shots, and practice history.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-500 font-bold mt-0.5">•</span>
+                    <p className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>
+                      <strong>Local Device Memory:</strong> Casual history stays privately on this device with customizable retention (10 to 50 games in Settings).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 4: Mandatory Understanding Confirmation */}
+              <div
+                onClick={() => {
+                  setHasUnderstood((prev) => !prev);
+                  setConfirmError(false);
+                }}
+                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer select-none ${
+                  hasUnderstood
+                    ? isDark
+                      ? 'bg-emerald-950/30 border-emerald-500 shadow-md shadow-emerald-500/10'
+                      : 'bg-emerald-50/90 border-emerald-500 shadow-sm'
+                    : confirmError
+                    ? isDark
+                      ? 'bg-rose-950/20 border-rose-500'
+                      : 'bg-rose-50 border-rose-500'
+                    : isDark
+                    ? 'bg-zinc-800/40 border-zinc-700 hover:border-zinc-500'
+                    : 'bg-zinc-50 border-zinc-300 hover:border-zinc-400'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                      hasUnderstood
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : confirmError
+                        ? 'border-2 border-rose-500 bg-rose-500/10'
+                        : isDark
+                        ? 'border-2 border-zinc-600 bg-zinc-800'
+                        : 'border-2 border-zinc-400 bg-white'
+                    }`}
+                  >
+                    {hasUnderstood && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
+                  <div className="space-y-1">
+                    <p
+                      className={`text-xs font-black tracking-tight ${
+                        hasUnderstood
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : confirmError
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : isDark
+                          ? 'text-zinc-200'
+                          : 'text-zinc-900'
+                      }`}
+                    >
+                      I have read and understand how Ranked &amp; Casual work
+                    </p>
+                    <p
+                      className={`text-[11px] leading-relaxed font-medium ${
+                        isDark ? 'text-zinc-400' : 'text-zinc-600'
+                      }`}
+                    >
+                      I confirm that my 100 ELO rating updates only through verified Ranked Matches using my QR Pass, and Casual games are for local practice.
+                    </p>
+                  </div>
+                </div>
+                {confirmError && !hasUnderstood && (
+                  <p className="mt-2 text-[11px] font-bold text-rose-500 text-center animate-fadeIn">
+                    ⚠️ Please tap the box above to confirm you understand before continuing.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* ================= STEP 1: UNIQUE USERNAME ================= */}
+              {step === 1 && (
             <div className="space-y-4 animate-fadeIn">
               <div className="space-y-1">
                 <h4
@@ -1001,6 +1388,8 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
               </div>
             </div>
           )}
+            </>
+          )}
         </div>
 
         {/* ================= GOOGLE-STYLE STICKY FOOTER ================= */}
@@ -1009,135 +1398,165 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
             isDark ? 'border-zinc-800 bg-zinc-900/90' : 'border-zinc-100 bg-white'
           }`}
         >
-          {/* Back or Cancel Button */}
-          {step === 1 ? (
-            <button
-              type="button"
-              onClick={handleModalClose}
-              className={`py-2.5 px-4 rounded-full font-bold text-xs transition active:scale-95 ${
-                isDark
-                  ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-              }`}
-            >
-              Cancel
-            </button>
+          {createdProfile ? (
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                {hasUnderstood ? (
+                  <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Ready to enter the arena
+                  </span>
+                ) : (
+                  <span className="text-amber-500 font-bold flex items-center gap-1.5">
+                    Tap the confirmation box above to proceed
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleFinishSetup}
+                className={`w-full sm:w-auto py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ${
+                  hasUnderstood
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30'
+                    : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border border-zinc-300 dark:border-zinc-700'
+                }`}
+              >
+                <span>Enter Arena &amp; View Standings</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4 | 5)}
-              disabled={isSubmitting}
-              className={`py-2.5 px-4 rounded-full font-bold text-xs flex items-center gap-1.5 transition active:scale-95 ${
-                isDark
-                  ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-              }`}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-          )}
-
-          {/* Primary Action Button */}
-          {step === 1 && (
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              disabled={!isStep1Valid}
-              className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
-                isStep1Valid
-                  ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
-                  : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <span>Continue</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {step === 2 && (
-            <button
-              type="button"
-              onClick={() => setStep(3)}
-              className="py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer transition-all"
-            >
-              <span>Got It, Next</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {step === 3 && (
-            <button
-              type="button"
-              onClick={() => setStep(4)}
-              disabled={!isStep3Valid}
-              className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
-                isStep3Valid
-                  ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
-                  : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <span>Next</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {step === 4 && (
-            <button
-              type="button"
-              onClick={() => setStep(5)}
-              disabled={!isStep4Valid}
-              className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
-                isStep4Valid
-                  ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
-                  : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <span>Next</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {step === 5 && (
-            <button
-              type="button"
-              onClick={() => setStep(6)}
-              disabled={!isStep5Valid}
-              className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
-                isStep5Valid
-                  ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
-                  : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <span>Review & Confirm</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {step === 6 && (
-            <button
-              type="button"
-              onClick={handleFinalSubmit}
-              disabled={isSubmitting || isRequestingCamera}
-              className="py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isRequestingCamera ? (
-                <>
-                  <Camera className="w-4 h-4 animate-pulse" />
-                  <span>Prompting Camera...</span>
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Activating...</span>
-                </>
+            <>
+              {/* Back or Cancel Button */}
+              {step === 1 ? (
+                <button
+                  type="button"
+                  onClick={handleModalClose}
+                  className={`py-2.5 px-4 rounded-full font-bold text-xs transition active:scale-95 ${
+                    isDark
+                      ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  Cancel
+                </button>
               ) : (
-                <>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Confirm & Activate</span>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4 | 5)}
+                  disabled={isSubmitting}
+                  className={`py-2.5 px-4 rounded-full font-bold text-xs flex items-center gap-1.5 transition active:scale-95 ${
+                    isDark
+                      ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                      : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
               )}
-            </button>
+
+              {/* Primary Action Button */}
+              {step === 1 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={!isStep1Valid}
+                  className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
+                    isStep1Valid
+                      ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
+                      : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <span>Got It, Next</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {step === 3 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(4)}
+                  disabled={!isStep3Valid}
+                  className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
+                    isStep3Valid
+                      ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
+                      : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {step === 4 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(5)}
+                  disabled={!isStep4Valid}
+                  className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
+                    isStep4Valid
+                      ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
+                      : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {step === 5 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(6)}
+                  disabled={!isStep5Valid}
+                  className={`py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
+                    isStep5Valid
+                      ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30 cursor-pointer'
+                      : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <span>Review & Confirm</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {step === 6 && (
+                <button
+                  type="button"
+                  onClick={handleFinalSubmit}
+                  disabled={isSubmitting || isRequestingCamera}
+                  className="py-3 px-6 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isRequestingCamera ? (
+                    <>
+                      <Camera className="w-4 h-4 animate-pulse" />
+                      <span>Prompting Camera...</span>
+                    </>
+                  ) : isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Activating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Confirm & Activate</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
