@@ -375,8 +375,8 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
                 <div className="text-center space-y-0.5">
-                  <p className="text-xs font-black text-zinc-900 tracking-tight">Loading QR Code...</p>
-                  <p className="text-[10px] font-semibold text-zinc-500">Generating competitor pass</p>
+                  <p className="text-xs font-black text-zinc-900 tracking-tight">Fetching QR Pass...</p>
+                  <p className="text-[10px] font-semibold text-zinc-500">Generating secure competitor pass</p>
                 </div>
               </div>
             )}
@@ -397,7 +397,7 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-500" />
-                  <span className="text-indigo-600 dark:text-indigo-400">Loading QR Code...</span>
+                  <span className="text-indigo-600 dark:text-indigo-400">Fetching QR Pass...</span>
                 </>
               ) : (
                 <>

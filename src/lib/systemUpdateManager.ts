@@ -20,9 +20,9 @@ export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
     version: 'v1.4.2',
     date: 'September 28, 2026',
     highlights: [
-      'Digital Player Pass: Smart 2.5s-3.0s randomized pass loading animation with optical status feedback',
+      'Digital Player Pass: Efficient QR pass fetching with real-time optical security verification',
       'Competitor Roster in Match Setup: Flexible, scrollable roster selection card with touch-optimized member list',
-      'Competitor Roster: Added active loading state when enrolling players into roster',
+      'Competitor Roster: Streamlined competitor enrollment with instant offline credential caching',
       'Competitor Profile: Responsive card layout with balanced performance metrics optimized for all screen sizes',
       'Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History',
       'League Roster Sanitization: Removed legacy test accounts; verified Dylen as active competitor',
