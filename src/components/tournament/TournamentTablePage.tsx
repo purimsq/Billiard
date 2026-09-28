@@ -263,18 +263,13 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
       ) + 1;
 
     return (
-      <div
-        className={`w-full max-w-4xl mx-auto min-h-screen px-3 sm:px-4 py-3 space-y-4 animate-fadeIn pb-16 ${
-          isDark ? 'text-zinc-100' : 'text-zinc-900'
-        }`}
-      >
-        <CompetitorProfileView
-          player={selectedPlayer}
-          rank={playerRank > 0 ? playerRank : null}
-          onBack={() => setSelectedPlayer(null)}
-          isDark={isDark}
-        />
-      </div>
+      <CompetitorProfileView
+        player={selectedPlayer}
+        rank={playerRank > 0 ? playerRank : null}
+        onBack={() => setSelectedPlayer(null)}
+        isDark={isDark}
+        backLabel="Tournament Table"
+      />
     );
   }
 

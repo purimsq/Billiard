@@ -22,6 +22,8 @@ export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
     highlights: [
       'Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History',
       'Digital Player Pass: Dynamic loading state when opening player QR code',
+      'Competitor Roster: Added active loading state when enrolling players into roster',
+      'Competitor Profile: Responsive card layout with balanced performance metrics optimized for all screen sizes',
       'League Roster Sanitization: Removed legacy test accounts; verified Dylen as active competitor',
       'Service Worker v8: Network-First navigation with instant background cache refresh',
     ],

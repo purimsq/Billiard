@@ -41,6 +41,7 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<PublicLeaderboardPlayer[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [addingPlayerId, setAddingPlayerId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const localProfile = getLocalDeviceProfile();
@@ -78,18 +79,26 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
     };
   }, [searchQuery]);
 
-  const handleAddCompetitor = (player: PublicLeaderboardPlayer) => {
-    const res = addPlayerToRoster(player);
-    if (res.success) {
-      reloadRoster();
-      const comp = formatCompetitorIdentity(player);
-      setToastMessage(`${comp.formattedTag} added to your verified roster`);
-      setTimeout(() => setToastMessage(null), 3000);
-      setSearchQuery('');
-      setSearchResults([]);
-    } else {
-      setToastMessage(res.message || 'Could not add player to roster');
-      setTimeout(() => setToastMessage(null), 3000);
+  const handleAddCompetitor = async (player: PublicLeaderboardPlayer) => {
+    const idKey = player.id || player.username;
+    setAddingPlayerId(idKey);
+    try {
+      // Small natural micro-delay to give clear visual feedback of the addition
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      const res = addPlayerToRoster(player);
+      if (res.success) {
+        reloadRoster();
+        const comp = formatCompetitorIdentity(player);
+        setToastMessage(`${comp.formattedTag} added to your verified roster`);
+        setTimeout(() => setToastMessage(null), 3000);
+        setSearchQuery('');
+        setSearchResults([]);
+      } else {
+        setToastMessage(res.message || 'Could not add player to roster');
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } finally {
+      setAddingPlayerId(null);
     }
   };
 
@@ -320,11 +329,21 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
                       ) : (
                         <button
                           type="button"
+                          disabled={addingPlayerId === (player.id || player.username)}
                           onClick={() => handleAddCompetitor(player)}
-                          className="py-1 px-3 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 transition active:scale-95 shadow-sm"
+                          className="py-1 px-3 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition active:scale-95 shadow-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add</span>
+                          {addingPlayerId === (player.id || player.username) ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Adding...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add</span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
