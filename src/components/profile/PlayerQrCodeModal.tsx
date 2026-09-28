@@ -152,8 +152,10 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
 
         const finishLoading = () => {
           if (!isMounted) return;
+          // Smart randomized duration between 2.5 and 3.0 seconds (2500ms - 3000ms)
+          const targetDuration = Math.floor(Math.random() * (3000 - 2500 + 1)) + 2500;
           const elapsed = Date.now() - startTime;
-          const delay = Math.max(0, 350 - elapsed);
+          const delay = Math.max(0, targetDuration - elapsed);
           setTimeout(() => {
             if (isMounted) {
               setRenderedKey(currentKey);
@@ -187,7 +189,12 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
       })
       .catch((err) => {
         console.error('Error rendering QR code:', err);
-        if (isMounted) setRenderedKey(currentKey);
+        const targetDuration = Math.floor(Math.random() * (3000 - 2500 + 1)) + 2500;
+        const elapsed = Date.now() - startTime;
+        const delay = Math.max(0, targetDuration - elapsed);
+        setTimeout(() => {
+          if (isMounted) setRenderedKey(currentKey);
+        }, delay);
       });
 
     return () => {

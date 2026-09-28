@@ -20,10 +20,11 @@ export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
     version: 'v1.4.2',
     date: 'September 28, 2026',
     highlights: [
-      'Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History',
-      'Digital Player Pass: Dynamic loading state when opening player QR code',
+      'Digital Player Pass: Smart 2.5s-3.0s randomized pass loading animation with optical status feedback',
+      'Competitor Roster in Match Setup: Flexible, scrollable roster selection card with touch-optimized member list',
       'Competitor Roster: Added active loading state when enrolling players into roster',
       'Competitor Profile: Responsive card layout with balanced performance metrics optimized for all screen sizes',
+      'Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History',
       'League Roster Sanitization: Removed legacy test accounts; verified Dylen as active competitor',
       'Service Worker v8: Network-First navigation with instant background cache refresh',
     ],
