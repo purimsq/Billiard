@@ -1,11 +1,11 @@
 {
-  "version": "1.4.1",
-  "buildDate": "September 27, 2026",
+  "version": "1.4.2",
+  "buildDate": "September 28, 2026",
   "minSupportedVersion": "1.0.0",
   "changelog": [
-    "Smart ELO Engine: Points-Per-Game efficiency weighting, dynamic K-factor, and high break bonuses",
-    "Standard Base Rating: All new competitors start at 100 ELO with live performance scaling",
-    "Full Event Logging: Shot-by-shot event capture for both Casual and Ranked play",
-    "Production Readiness: Clean database connection, genuine match logging, and sample data purged"
+    "Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History",
+    "Digital Player Pass: Dynamic loading state when opening player QR code",
+    "League Roster Sanitization: Removed legacy test accounts; verified Dylen as active competitor",
+    "Service Worker v8: Network-First navigation with instant background cache refresh"
   ]
 }

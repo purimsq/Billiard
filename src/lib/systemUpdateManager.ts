@@ -12,10 +12,20 @@ export interface UpdateChangelogItem {
   highlights: string[];
 }
 
-export const BASE_APP_VERSION = '1.4.1';
-export const BUILD_DATE = 'September 27, 2026';
+export const BASE_APP_VERSION = '1.4.2';
+export const BUILD_DATE = 'September 28, 2026';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
+  {
+    version: 'v1.4.2',
+    date: 'September 28, 2026',
+    highlights: [
+      'Casual History Retention: Configurable 10 to 50 match limit via tag dropdown in History',
+      'Digital Player Pass: Dynamic loading state when opening player QR code',
+      'League Roster Sanitization: Removed legacy test accounts; verified Dylen as active competitor',
+      'Service Worker v8: Network-First navigation with instant background cache refresh',
+    ],
+  },
   {
     version: 'v1.4.1',
     date: 'September 27, 2026',

@@ -73,6 +73,7 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
   const [createdProfile, setCreatedProfile] = useState<RankedPlayerProfile | null>(null);
   const [hasUnderstood, setHasUnderstood] = useState<boolean>(false);
   const [confirmError, setConfirmError] = useState<boolean>(false);
+  const [isQrLoading, setIsQrLoading] = useState<boolean>(true);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Debounced discriminator allocator for Step 1
@@ -97,7 +98,11 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
 
   // Generate QR Code preview on the post-creation confirmation screen
   useEffect(() => {
-    if (!createdProfile || !qrCanvasRef.current) return;
+    if (!createdProfile || !qrCanvasRef.current) {
+      setIsQrLoading(true);
+      return;
+    }
+    setIsQrLoading(true);
     const canvas = qrCanvasRef.current;
     const payload =
       createdProfile.qrData ||
@@ -178,9 +183,12 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
         ctx.textBaseline = 'middle';
         ctx.fillText('8', cx, cy + 1);
         ctx.restore();
+
+        setIsQrLoading(false);
       })
       .catch((err) => {
         console.warn('Failed to draw QR preview on confirmation screen:', err);
+        setIsQrLoading(false);
       });
   }, [createdProfile]);
 
@@ -528,8 +536,19 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
 
                 {/* QR Canvas Display */}
                 <div className="flex flex-col sm:flex-row items-center gap-4 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800">
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center flex-shrink-0">
-                    <canvas ref={qrCanvasRef} className="w-full h-full rounded-lg" />
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    {isQrLoading && (
+                      <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10 animate-fadeIn">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                        <span className="text-[10px] font-bold text-zinc-600">Loading QR...</span>
+                      </div>
+                    )}
+                    <canvas
+                      ref={qrCanvasRef}
+                      className={`w-full h-full rounded-lg transition-opacity duration-300 ${
+                        isQrLoading ? 'opacity-0' : 'opacity-100'
+                      }`}
+                    />
                   </div>
                   <div className="space-y-1.5 text-left text-xs">
                     <p

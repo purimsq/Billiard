@@ -1,4 +1,4 @@
-const CACHE_NAME = 'billiard-pwa-v7';
+const CACHE_NAME = 'billiard-pwa-v8';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -48,6 +48,25 @@ self.addEventListener('fetch', (event) => {
     url.searchParams.has('_probe') || 
     url.searchParams.has('_t')
   ) {
+    return;
+  }
+
+  // Network First for Navigation requests (HTML pages)
+  // Ensures returning users with internet immediately receive the latest application bundle
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => cached || caches.match('/'));
+        })
+    );
     return;
   }
 

@@ -7,6 +7,7 @@ import {
   Check,
   QrCode as QrIcon,
   Share2,
+  Loader2,
 } from 'lucide-react';
 import { RankedPlayerProfile } from '@/lib/rankedSync';
 
@@ -26,13 +27,28 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [shared, setShared] = useState<boolean>(false);
+  const [renderedKey, setRenderedKey] = useState<string | null>(null);
+
+  if (!isOpen && renderedKey !== null) {
+    setRenderedKey(null);
+  }
+
+  const currentKey =
+    isOpen && profile
+      ? `${profile.id}_${profile.rating || 100}_${profile.qrData || ''}`
+      : null;
+  const isLoading = !currentKey || renderedKey !== currentKey;
 
   useEffect(() => {
-    if (!isOpen || !profile) return;
+    if (!isOpen || !profile || !currentKey) {
+      return;
+    }
 
     let isMounted = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const startTime = Date.now();
 
     // Construct clean, compact JSON payload
     const payload =
@@ -134,6 +150,17 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
 
         ctx.restore();
 
+        const finishLoading = () => {
+          if (!isMounted) return;
+          const elapsed = Date.now() - startTime;
+          const delay = Math.max(0, 350 - elapsed);
+          setTimeout(() => {
+            if (isMounted) {
+              setRenderedKey(currentKey);
+            }
+          }, delay);
+        };
+
         // 3. Try overlaying app logo /icon-192.png if loaded
         const logoImg = new Image();
         logoImg.crossOrigin = 'anonymous';
@@ -150,20 +177,23 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
           canvas.style.width = '100%';
           canvas.style.height = '100%';
           canvas.style.maxWidth = '100%';
+          finishLoading();
         };
         logoImg.onerror = () => {
           // Fallback to our vector 8-ball is already drawn
+          finishLoading();
         };
         logoImg.src = '/icon-192.png';
       })
       .catch((err) => {
         console.error('Error rendering QR code:', err);
+        if (isMounted) setRenderedKey(currentKey);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen, profile]);
+  }, [isOpen, profile, currentKey]);
 
   if (!isOpen) return null;
 
@@ -331,10 +361,25 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
             <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-indigo-600 rounded-bl pointer-events-none" />
             <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-indigo-600 rounded-br pointer-events-none" />
 
+            {/* Dedicated Loading State Overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center gap-2.5 z-10 animate-fadeIn">
+                <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shadow-xs">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+                <div className="text-center space-y-0.5">
+                  <p className="text-xs font-black text-zinc-900 tracking-tight">Loading QR Code...</p>
+                  <p className="text-[10px] font-semibold text-zinc-500">Generating competitor pass</p>
+                </div>
+              </div>
+            )}
+
             {/* QR Canvas strictly constrained to parent width and height */}
             <canvas
               ref={canvasRef}
-              className="w-full h-full object-contain block rounded-lg"
+              className={`w-full h-full object-contain block rounded-lg transition-opacity duration-300 ${
+                isLoading ? 'opacity-0' : 'opacity-100'
+              }`}
               style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }}
             />
           </div>
@@ -342,11 +387,20 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
           {/* Optical Scanner Status Indicator */}
           <div className="text-center space-y-0.5">
             <div className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Optical Scan Ready</span>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-500" />
+                  <span className="text-indigo-600 dark:text-indigo-400">Loading QR Code...</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Optical Scan Ready</span>
+                </>
+              )}
             </div>
             <p className={`text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-              Scan with camera to connect
+              {isLoading ? 'Encrypting digital competitor pass' : 'Scan with camera to connect'}
             </p>
           </div>
         </div>

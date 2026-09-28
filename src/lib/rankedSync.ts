@@ -182,13 +182,59 @@ export function formatTournamentLastUpdated(timestamp?: number | null): string {
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
 }
 
+const BANNED_TEST_USERS = ['dave', 'player 1', 'player 2', 'player1', 'player2'];
+
+export function isBannedTestPlayer(nameOrTag?: string, id?: string): boolean {
+  if (id && (id === 'player_1790498452450_0' || id === 'player_1790498452450_1' || id === '4wgYMGQZscS4kuRCbk3uf7n51v42')) {
+    return true;
+  }
+  if (!nameOrTag) return false;
+  const clean = nameOrTag.trim().toLowerCase();
+  return BANNED_TEST_USERS.some(
+    (b) => clean === b || clean.startsWith('player 1') || clean.startsWith('player 2') || clean.startsWith('dave #') || clean.startsWith('dave#')
+  );
+}
+
+// Auto-sanitize legacy test players from local storage on module boot
+if (typeof window !== 'undefined') {
+  try {
+    const keys = [
+      CACHED_LEADERBOARD_KEY,
+      'billiard_smart_frequent_competitors_v1',
+      'billiard_verified_competitor_roster_v1',
+    ];
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const cleaned = list.filter((item: Record<string, unknown>) => {
+              const u = String(item.username || item.name || item.tag || '');
+              const id = typeof item.id === 'string' ? item.id : undefined;
+              return !isBannedTestPlayer(u, id);
+            });
+            if (cleaned.length !== list.length) {
+              localStorage.setItem(key, JSON.stringify(cleaned));
+            }
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+}
+
 export function getCachedLeaderboard(): PublicLeaderboardPlayer[] {
   if (typeof window === 'undefined') return [];
   try {
     const cached = localStorage.getItem(CACHED_LEADERBOARD_KEY);
     if (!cached) return [];
     const parsed = JSON.parse(cached) as PublicLeaderboardPlayer[];
-    return parsed.map((p) => {
+    const cleaned = parsed.filter((p) => {
+      const u = p.username || p.name || p.tag || '';
+      return !isBannedTestPlayer(u, p.id);
+    });
+    return cleaned.map((p) => {
       const comp = formatCompetitorIdentity(p);
       return {
         ...p,
@@ -432,12 +478,16 @@ export function getFrequentCompetitors(): PublicLeaderboardPlayer[] {
     if (!raw) return [];
     const list = JSON.parse(raw) as SmartCompetitorRecord[];
     if (!Array.isArray(list)) return [];
-    list.sort(
+    const cleaned = list.filter((p) => {
+      const u = p.username || p.name || p.tag || '';
+      return !isBannedTestPlayer(u, p.id);
+    });
+    cleaned.sort(
       (a, b) =>
         (b.searchCount || 0) - (a.searchCount || 0) ||
         (b.lastInteracted || 0) - (a.lastInteracted || 0)
     );
-    return list.slice(0, 8);
+    return cleaned.slice(0, 8);
   } catch {
     return [];
   }
@@ -522,6 +572,7 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
   // 1. Check local frequent competitors first (instant)
   const frequent = getFrequentCompetitors();
   for (const f of frequent) {
+    if (isBannedTestPlayer(f.username, f.id) || isBannedTestPlayer(f.tag, f.id) || isBannedTestPlayer(f.name, f.id)) continue;
     const comp = formatCompetitorIdentity(f);
     if (
       comp.username.toLowerCase().includes(term) ||
@@ -539,6 +590,7 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
       try {
         const parsed = JSON.parse(cached) as PublicLeaderboardPlayer[];
         for (const p of parsed) {
+          if (isBannedTestPlayer(p.username, p.id) || isBannedTestPlayer(p.tag, p.id) || isBannedTestPlayer(p.name, p.id)) continue;
           const comp = formatCompetitorIdentity(p);
           if (
             comp.username.toLowerCase().includes(term) ||
@@ -567,6 +619,9 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
 
     snapshot.forEach((docSnap) => {
       const data = docSnap.data() as RankedPlayerProfile;
+      if (isBannedTestPlayer(data.username, docSnap.id) || isBannedTestPlayer(data.tag, docSnap.id) || isBannedTestPlayer(data.name, docSnap.id)) {
+        return;
+      }
       const comp = formatCompetitorIdentity({ ...data, id: docSnap.id });
       const matchName = (data.name || '').toLowerCase();
       const matchTag = comp.formattedTag.toLowerCase();
@@ -1136,6 +1191,9 @@ export async function getOnlineLeaderboard(limitCount = 50): Promise<PublicLeade
     const leaderboard: PublicLeaderboardPlayer[] = [];
     snapshot.forEach((docSnap) => {
       const data = docSnap.data() as RankedPlayerProfile;
+      if (isBannedTestPlayer(data.username, docSnap.id) || isBannedTestPlayer(data.tag, docSnap.id) || isBannedTestPlayer(data.name, docSnap.id)) {
+        return;
+      }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { pin, ...publicData } = data;
       const comp = formatCompetitorIdentity({ ...publicData, id: publicData.id || docSnap.id });
@@ -1161,16 +1219,21 @@ export async function getOnlineLeaderboard(limitCount = 50): Promise<PublicLeade
       const cached = localStorage.getItem(CACHED_LEADERBOARD_KEY);
       if (cached) {
         const parsed = JSON.parse(cached) as PublicLeaderboardPlayer[];
-        return parsed.map((p) => {
-          const comp = formatCompetitorIdentity(p);
-          return {
-            ...p,
-            username: comp.username,
-            discriminator: comp.discriminator,
-            tag: comp.formattedTag,
-            name: p.name || comp.formattedTag,
-          };
-        });
+        return parsed
+          .filter((p) => {
+            const u = p.username || p.name || p.tag || '';
+            return !isBannedTestPlayer(u, p.id);
+          })
+          .map((p) => {
+            const comp = formatCompetitorIdentity(p);
+            return {
+              ...p,
+              username: comp.username,
+              discriminator: comp.discriminator,
+              tag: comp.formattedTag,
+              name: p.name || comp.formattedTag,
+            };
+          });
       }
     }
     return [];
@@ -1386,16 +1449,21 @@ export function getVerifiedRoster(): PublicLeaderboardPlayer[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as PublicLeaderboardPlayer[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((p) => {
-      const comp = formatCompetitorIdentity(p);
-      return {
-        ...p,
-        username: comp.username,
-        discriminator: comp.discriminator,
-        tag: comp.formattedTag,
-        name: p.name || comp.formattedTag,
-      };
-    });
+    return parsed
+      .filter((p) => {
+        const u = p.username || p.name || p.tag || '';
+        return !isBannedTestPlayer(u, p.id);
+      })
+      .map((p) => {
+        const comp = formatCompetitorIdentity(p);
+        return {
+          ...p,
+          username: comp.username,
+          discriminator: comp.discriminator,
+          tag: comp.formattedTag,
+          name: p.name || comp.formattedTag,
+        };
+      });
   } catch (err) {
     console.warn('[RankedSync] Failed loading verified roster:', err);
     return [];
