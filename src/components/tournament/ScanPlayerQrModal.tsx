@@ -354,19 +354,25 @@ export const ScanPlayerQrModal: React.FC<ScanPlayerQrModalProps> = ({
 
           {/* Viewfinder Target Overlay */}
           {hasCameraPermission && isScanning && (
-            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-between p-6">
-              {/* Corner brackets */}
-              <div className="w-full flex justify-between">
-                <div className="w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl-lg" />
-                <div className="w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr-lg" />
-              </div>
+            <div className="absolute inset-0 pointer-events-none p-6">
+              <div className="relative w-full h-full">
+                {/* Corner brackets */}
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white/90 rounded-tl-lg shadow-sm" />
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white/90 rounded-tr-lg shadow-sm" />
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white/90 rounded-bl-lg shadow-sm" />
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white/90 rounded-br-lg shadow-sm" />
 
-              {/* Animated laser line */}
-              <div className="w-4/5 h-0.5 bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse" />
+                {/* Animated Sweeping Laser Line with Radiant Glow Trail */}
+                <div
+                  className="absolute left-1 right-1 animate-qrLaser pointer-events-none"
+                  style={{ willChange: 'top' }}
+                >
+                  {/* Soft Laser Glow Fan */}
+                  <div className="absolute -top-3 left-0 right-0 h-6 bg-gradient-to-b from-rose-500/0 via-rose-500/25 to-rose-500/0 blur-[2px] pointer-events-none" />
 
-              <div className="w-full flex justify-between">
-                <div className="w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl-lg" />
-                <div className="w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br-lg" />
+                  {/* Intense Laser Core Line */}
+                  <div className="relative h-[2px] w-full bg-gradient-to-r from-rose-500/20 via-rose-500 to-rose-500/20 rounded-full shadow-[0_0_12px_2.5px_rgba(244,63,94,0.95)]" />
+                </div>
               </div>
             </div>
           )}
