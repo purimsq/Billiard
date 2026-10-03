@@ -362,16 +362,17 @@ export const ScanPlayerQrModal: React.FC<ScanPlayerQrModalProps> = ({
                 <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white/90 rounded-bl-lg shadow-sm" />
                 <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white/90 rounded-br-lg shadow-sm" />
 
-                {/* Animated Sweeping Laser Line with Radiant Glow Trail */}
+                {/* Animated Sweeping Futuristic Blue Laser Line */}
                 <div
                   className="absolute left-1 right-1 animate-qrLaser pointer-events-none"
                   style={{ willChange: 'top' }}
                 >
-                  {/* Soft Laser Glow Fan */}
-                  <div className="absolute -top-3 left-0 right-0 h-6 bg-gradient-to-b from-rose-500/0 via-rose-500/25 to-rose-500/0 blur-[2px] pointer-events-none" />
+                  {/* Holographic Cyan Laser Glow Fan (vertical projection trailing behind the beam) */}
+                  <div className="absolute -top-7 left-0 right-0 h-10 bg-gradient-to-t from-cyan-400/25 via-cyan-500/10 to-transparent blur-[1.5px] pointer-events-none" />
+                  <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-cyan-400/20 to-transparent blur-[1px] pointer-events-none" />
 
-                  {/* Intense Laser Core Line */}
-                  <div className="relative h-[2px] w-full bg-gradient-to-r from-rose-500/20 via-rose-500 to-rose-500/20 rounded-full shadow-[0_0_12px_2.5px_rgba(244,63,94,0.95)]" />
+                  {/* Intense Cyan-Blue Laser Core Line */}
+                  <div className="relative h-[2px] w-full bg-gradient-to-r from-cyan-500/10 via-cyan-300 via-50% to-cyan-500/10 rounded-full shadow-[0_0_14px_3px_rgba(56,189,248,0.95),0_0_24px_6px_rgba(14,165,233,0.5)]" />
                 </div>
               </div>
             </div>

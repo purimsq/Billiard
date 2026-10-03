@@ -153,22 +153,22 @@
   animation: flamePulse 1.6s ease-in-out infinite;
 }
 
-/* Optical QR Scanner Laser Sweep Animation */
+/* Optical QR Scanner Futuristic Laser Sweep Animation */
 @keyframes qrLaserSweep {
   0% {
-    top: 4%;
+    top: 5%;
     opacity: 0.85;
   }
   50% {
-    top: 94%;
+    top: 93%;
     opacity: 1;
   }
   100% {
-    top: 4%;
+    top: 5%;
     opacity: 0.85;
   }
 }
 
 .animate-qrLaser {
-  animation: qrLaserSweep 2.2s ease-in-out infinite;
+  animation: qrLaserSweep 3.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
