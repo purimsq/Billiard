@@ -966,6 +966,7 @@ export interface RankedSyncProgressUpdate {
 export interface SubmitRankedMatchResult {
   success: boolean;
   offlineQueued: boolean;
+  alreadySynced?: boolean;
   eloResult?: MatchEloResult;
   error?: unknown;
 }
@@ -1103,6 +1104,21 @@ export async function submitRankedMatch(
     });
 
     const matchRef = doc(db, 'ranked_matches', session.id);
+    const existingSnap = await getDoc(matchRef);
+    if (existingSnap.exists()) {
+      // Deduplication guard: Match already confirmed in Firestore!
+      // Purge from pending queue immediately and prevent double-counting player career stats
+      removePendingRankedSync(session.id);
+      updateCachedLeaderboardAfterMatch(eloResult);
+      onProgress?.({
+        stage: 'complete',
+        percent: 100,
+        label: 'MATCH ALREADY SECURED',
+        detail: 'Record was already verified in Firestore.',
+      });
+      return { success: true, offlineQueued: false, alreadySynced: true, eloResult };
+    }
+
     await setDoc(matchRef, payload);
 
     // Update each player doc in Firestore with their new rating and career stats
@@ -1192,6 +1208,9 @@ export async function submitRankedMatch(
 
     // Immediately update local tournament standings cache
     updateCachedLeaderboardAfterMatch(eloResult);
+
+    // Purge from pending offline queue immediately so it cannot be double-pushed
+    removePendingRankedSync(session.id);
 
     onProgress?.({
       stage: 'complete',
@@ -1369,6 +1388,19 @@ function queuePendingRankedSync(session: GameSession): void {
   }
 }
 
+export function removePendingRankedSync(sessionId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_KEY);
+    if (!raw) return;
+    const queue = JSON.parse(raw) as GameSession[];
+    const filtered = queue.filter((s) => s.id !== sessionId);
+    localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.error('Failed to remove pending ranked sync:', err);
+  }
+}
+
 export async function flushPendingRankedSync(): Promise<number> {
   if (typeof window === 'undefined') return 0;
   try {
@@ -1378,18 +1410,22 @@ export async function flushPendingRankedSync(): Promise<number> {
     if (queue.length === 0) return 0;
 
     let syncedCount = 0;
-    const remaining: GameSession[] = [];
 
     for (const session of queue) {
       const res = await submitRankedMatch(session);
       if (res.success && !res.offlineQueued) {
         syncedCount++;
-      } else {
-        remaining.push(session);
+        // Remove individual session immediately from queue so power failure or socket reset cannot re-push it
+        removePendingRankedSync(session.id);
       }
     }
 
-    localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(remaining));
+    if (syncedCount > 0) {
+      window.dispatchEvent(
+        new CustomEvent('billiard:ranked-synced', { detail: { count: syncedCount } })
+      );
+    }
+
     return syncedCount;
   } catch (err) {
     console.error('Failed to flush pending ranked sync:', err);
@@ -1410,8 +1446,8 @@ export function getPendingRankedSyncCount(): number {
 }
 
 /**
- * Global background listener that monitors device connectivity (window.online + document.visibilitychange)
- * and automatically flushes any queued offline ranked matches when internet becomes available.
+ * Global background listener that monitors device connectivity (window.online + document.visibilitychange + heartbeat interval)
+ * and automatically flushes any queued offline ranked matches when internet becomes available (hands-free like app updates).
  */
 export function startOfflineRankedSyncListener(
   onSyncSuccess?: (syncedCount: number) => void
@@ -1454,10 +1490,14 @@ export function startOfflineRankedSyncListener(
   window.addEventListener('online', handleOnline);
   document.addEventListener('visibilitychange', handleVisibility);
 
+  // Periodic heartbeat sync: auto-checks every 45s while app is open, exactly like system update checks
+  const intervalId = setInterval(checkAndFlush, 45000);
+
   // Check immediately upon initialization
   checkAndFlush();
 
   return () => {
+    clearInterval(intervalId);
     window.removeEventListener('online', handleOnline);
     document.removeEventListener('visibilitychange', handleVisibility);
   };

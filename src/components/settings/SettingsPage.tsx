@@ -23,12 +23,15 @@ import {
   VolumeX,
   ChevronRight,
   LogIn,
+  HardDrive,
 } from 'lucide-react';
 import { AppSettings } from '@/types/settings';
 import {
   getLocalDeviceProfile,
   RankedPlayerProfile,
   getVerifiedRoster,
+  getPendingRankedSyncCount,
+  flushPendingRankedSync,
 } from '@/lib/rankedSync';
 import { OnlineIdentitySetupModal } from '@/components/profile/OnlineIdentitySetupModal';
 import { RestoreIdentityPage } from '@/components/profile/RestoreIdentityPage';
@@ -44,6 +47,7 @@ import {
 import {
   subscribeNetworkHealth,
   getNetworkHealthSnapshot,
+  checkRealInternetConnectivity,
 } from '@/lib/networkReachability';
 import {
   getSystemUpdateSnapshot,
@@ -268,6 +272,79 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isRestorePageOpen, setIsRestorePageOpen] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isInitiatingRanked, setIsInitiatingRanked] = useState<boolean>(false);
+  const [pendingRankedCount, setPendingRankedCount] = useState<number>(() => getPendingRankedSyncCount());
+  const [isSyncingQueue, setIsSyncingQueue] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<{
+    status: 'idle' | 'success' | 'none' | 'offline';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleSyncEvent = () => {
+      setPendingRankedCount(getPendingRankedSyncCount());
+    };
+    window.addEventListener('billiard:ranked-synced', handleSyncEvent);
+    window.addEventListener('storage', handleSyncEvent);
+    return () => {
+      window.removeEventListener('billiard:ranked-synced', handleSyncEvent);
+      window.removeEventListener('storage', handleSyncEvent);
+    };
+  }, []);
+
+  const handleCheckAndPushQueue = async () => {
+    setIsSyncingQueue(true);
+    setSyncFeedback(null);
+
+    const initialCount = getPendingRankedSyncCount();
+    if (initialCount === 0) {
+      setIsSyncingQueue(false);
+      setSyncFeedback({
+        status: 'none',
+        message: 'All ranked games are already synced! No pending offline games on this device.',
+      });
+      return;
+    }
+
+    const health = await checkRealInternetConnectivity();
+    if (!health.hasInternet) {
+      setIsSyncingQueue(false);
+      setSyncFeedback({
+        status: 'offline',
+        message: `Offline mode: ${initialCount} match${initialCount > 1 ? 'es are' : ' is'} safely saved in device storage. Will auto-push once internet is restored.`,
+      });
+      return;
+    }
+
+    try {
+      const synced = await flushPendingRankedSync();
+      const remaining = getPendingRankedSyncCount();
+      setPendingRankedCount(remaining);
+      setIsSyncingQueue(false);
+
+      if (synced > 0) {
+        setSyncFeedback({
+          status: 'success',
+          message: `✓ Successfully pushed ${synced} ranked match${synced > 1 ? 'es' : ''} to official database! Queue is now empty (0 remaining).`,
+        });
+      } else if (remaining === 0) {
+        setSyncFeedback({
+          status: 'none',
+          message: 'All games are verified and synced. 0 pending.',
+        });
+      } else {
+        setSyncFeedback({
+          status: 'offline',
+          message: 'Network stalled while pushing. Remaining matches are safe and will auto-push in background.',
+        });
+      }
+    } catch {
+      setIsSyncingQueue(false);
+      setSyncFeedback({
+        status: 'offline',
+        message: 'Upload interrupted. Your match records remain safe on device.',
+      });
+    }
+  };
 
   const handleOpenHistory = () => {
     if (onOpenHistory) {
@@ -1214,6 +1291,123 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           >
             Set friendly table forfeits for friends around the pool table: <em>Loser buys next round 🍺</em>, <em>racks next 3 games 🎱</em>, or <em>20 pushups 💪</em>. Proclaimed officially on the winner podium!
           </p>
+        </div>
+      </div>
+
+      {/* SECTION 4.5: OFFLINE MATCH QUEUE & AUTO-SYNC */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3
+            className={`text-[11px] font-extrabold uppercase tracking-wider ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}
+          >
+            Offline Ranked Matches
+          </h3>
+          {pendingRankedCount === 0 ? (
+            <span className="text-[10px] font-extrabold text-emerald-500 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              All Synced (0 Queued)
+            </span>
+          ) : (
+            <span className="text-[10px] font-extrabold text-amber-500 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              {pendingRankedCount} Queued Offline
+            </span>
+          )}
+        </div>
+
+        <div
+          className={`p-4 sm:p-5 rounded-3xl border space-y-3 transition-colors ${
+            isDark
+              ? 'bg-zinc-900/80 border-zinc-800'
+              : 'bg-white border-zinc-200/90'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-4 h-4 text-indigo-500" />
+              <h4 className="font-black text-sm sm:text-base uppercase tracking-tight">
+                Offline Match Queue
+              </h4>
+            </div>
+            <span
+              className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                pendingRankedCount === 0
+                  ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25'
+                  : 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
+              }`}
+            >
+              {pendingRankedCount === 0 ? 'CLEAN' : `${pendingRankedCount} PENDING`}
+            </span>
+          </div>
+
+          <p
+            className={`text-xs font-medium leading-relaxed ${
+              isDark ? 'text-zinc-400' : 'text-zinc-600'
+            }`}
+          >
+            Matches completed during late-night dropouts or offline play are preserved in secure device storage. They automatically upload in the background once internet is restored, with zero duplicate matches.
+          </p>
+
+          {/* Live Feedback Banner */}
+          {syncFeedback && (
+            <div
+              className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 animate-fadeIn border ${
+                syncFeedback.status === 'success' || syncFeedback.status === 'none'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400'
+              }`}
+            >
+              {syncFeedback.status === 'success' || syncFeedback.status === 'none' ? (
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              ) : (
+                <WifiOff className="w-4 h-4 flex-shrink-0" />
+              )}
+              <span>{syncFeedback.message}</span>
+            </div>
+          )}
+
+          {/* Action Row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+            <span
+              className={`text-[11px] font-medium flex items-center gap-1.5 ${
+                isDark ? 'text-zinc-400' : 'text-zinc-500'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
+              Auto-sync runs automatically every 45s in background
+            </span>
+
+            <button
+              type="button"
+              onClick={handleCheckAndPushQueue}
+              disabled={isSyncingQueue}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                isSyncingQueue
+                  ? 'opacity-60 cursor-wait bg-zinc-200 dark:bg-zinc-800 text-zinc-500'
+                  : pendingRankedCount > 0
+                  ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-sm active:scale-95'
+                  : isDark
+                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-sm active:scale-95'
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 shadow-sm active:scale-95'
+              }`}
+            >
+              {isSyncingQueue ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Pushing Queued Matches...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>
+                    {pendingRankedCount > 0 ? 'Push Queued Matches Now' : 'Check for Queued Games'}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
