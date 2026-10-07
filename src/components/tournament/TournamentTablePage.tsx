@@ -13,6 +13,7 @@ import {
   X,
   ArrowRight,
   Clock,
+  Mail,
 } from 'lucide-react';
 import {
   PublicLeaderboardPlayer,
@@ -26,6 +27,7 @@ import {
   sortTournamentStandings,
   flushPendingRankedSync,
   getPendingRankedSyncCount,
+  syncRosterMemberEmails,
 } from '@/lib/rankedSync';
 import {
   subscribeNetworkHealth,
@@ -88,6 +90,7 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
           discriminator: comp.discriminator,
           tag: comp.formattedTag,
           name: p.name || comp.formattedTag,
+          email: p.email || '',
         };
       });
 
@@ -108,6 +111,7 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
             discriminator: localComp.discriminator,
             tag: localComp.formattedTag,
             name: publicLocal.name || localComp.formattedTag,
+            email: localProfile.email || publicLocal.email || '',
           });
         }
       }
@@ -117,6 +121,11 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
     },
     [localProfile]
   );
+
+  // Proactively backfill emails for any existing roster members
+  useEffect(() => {
+    syncRosterMemberEmails().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!network.hasInternet) return;
@@ -197,6 +206,7 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
       const matched = players.find((p) => {
         const comp = formatCompetitorIdentity(p);
         if (scanned.id && p.id === scanned.id) return true;
+        if (scanned.email && p.email && scanned.email.toLowerCase() === p.email.toLowerCase()) return true;
         if (
           scanned.discriminator &&
           comp.discriminator === scanned.discriminator &&
@@ -222,7 +232,7 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
         setSearchQuery(comp.username);
         setMenuPlayer(matched);
       } else {
-        setSearchQuery(scanned.username || scanned.discriminator || scanned.tag || '');
+        setSearchQuery(scanned.username || scanned.email || scanned.discriminator || scanned.tag || '');
       }
     },
     [players]
@@ -375,18 +385,9 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
         </div>
       </div>
 
-      {/* SPORTS BREADCRUMB & SECTION TITLE */}
+      {/* SECTION TITLE & META */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-1">
         <div className="space-y-0.5 sm:space-y-1">
-          {/* Sports Journal Breadcrumbs */}
-          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-rose-600 dark:text-rose-400 flex-wrap">
-            <span>Tournament</span>
-            <span>&gt;</span>
-            <span>Ranked Circuit</span>
-            <span>&gt;</span>
-            <span className="text-zinc-500 dark:text-zinc-400">Official Standings</span>
-          </div>
-
           <h2 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
             Tournament League Table
           </h2>
@@ -532,15 +533,21 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
       ) : (
         /* CASE 2: SPORTS LEAGUE TABLE (UEFA / FANATIK RANKING TABLE STYLE) - DIRECTLY ON PAGE */
         <div className="space-y-4">
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <div
+            className={`overflow-x-auto -mx-3 sm:mx-0 rounded-2xl sm:rounded-3xl border shadow-xs transition-all ${
+              isDark
+                ? 'bg-zinc-900/50 border-zinc-800/80 backdrop-blur-xs'
+                : 'bg-white/80 border-zinc-200/90 backdrop-blur-xs'
+            }`}
+          >
             <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
               {/* TABLE HEADER (with crimson / red highlight styling like Fanatik) */}
               <thead>
                 <tr
-                  className={`border-b-2 select-none ${
+                  className={`border-b select-none transition-colors ${
                     isDark
-                      ? 'bg-zinc-900/50 border-zinc-800 text-zinc-400'
-                      : 'bg-zinc-100/70 border-zinc-200 text-zinc-600'
+                      ? 'bg-zinc-900/80 border-zinc-800 text-zinc-400'
+                      : 'bg-zinc-100/80 border-zinc-200 text-zinc-600'
                   }`}
                 >
                   <th className="py-2.5 px-2 sm:px-2.5 w-8 sm:w-10 text-center font-black">#</th>
@@ -564,8 +571,8 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
 
               {/* TABLE BODY */}
               <tbody
-                className={`divide-y border-b ${
-                  isDark ? 'divide-zinc-800/80 border-zinc-800' : 'divide-zinc-200/80 border-zinc-200'
+                className={`divide-y ${
+                  isDark ? 'divide-zinc-800/60' : 'divide-zinc-200/70'
                 }`}
               >
                 {isLoading ? (
@@ -642,14 +649,14 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
                     return (
                       <tr
                         key={rowKey}
-                        className={`transition-colors font-medium relative ${
+                        className={`transition-all duration-200 font-medium relative ${
                           isMe
                             ? isDark
                               ? 'bg-indigo-500/15 hover:bg-indigo-500/20 ring-1 ring-inset ring-indigo-500/30'
                               : 'bg-indigo-50/80 hover:bg-indigo-100/70 ring-1 ring-inset ring-indigo-200'
                             : isDark
                             ? 'hover:bg-zinc-800/40'
-                            : 'hover:bg-zinc-50'
+                            : 'hover:bg-zinc-50/80'
                         }`}
                       >
                         {/* Rank # Cell with zone coloring */}
@@ -661,12 +668,12 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
                           </span>
                         </td>
 
-                        {/* Competitor: Flag/Avatar + Username + ALWAYS-VISIBLE Short Code */}
+                        {/* Competitor: Flag/Avatar + Username + ALWAYS-VISIBLE Short Code + Email */}
                         <td className="py-2.5 px-2 sm:px-3">
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             {/* Round emblem / avatar */}
                             <span
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black text-white shadow-2xs flex-shrink-0 ring-1 ring-white/10"
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black text-white shadow-2xs flex-shrink-0 ring-1 ring-white/10"
                               style={{
                                 backgroundColor: player.color || '#6366F1',
                               }}
@@ -674,31 +681,43 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
                               {competitor.username.charAt(0).toUpperCase()}
                             </span>
 
-                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap sm:flex-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedPlayer(player)}
-                                className={`font-black text-xs truncate max-w-[95px] xs:max-w-[140px] sm:max-w-[200px] hover:underline text-left cursor-pointer transition-colors ${
-                                  isDark ? 'text-white hover:text-rose-400' : 'text-zinc-900 hover:text-rose-600'
-                                }`}
-                                title={`View ${competitor.formattedTag}'s profile`}
-                              >
-                                {competitor.username}
-                              </button>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-wrap sm:flex-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPlayer(player)}
+                                  className={`font-black text-xs truncate max-w-[100px] xs:max-w-[140px] sm:max-w-[200px] hover:underline text-left cursor-pointer transition-colors ${
+                                    isDark ? 'text-white hover:text-rose-400' : 'text-zinc-900 hover:text-rose-600'
+                                  }`}
+                                  title={`View ${competitor.formattedTag}'s profile`}
+                                >
+                                  {competitor.username}
+                                </button>
 
-                              {/* ALWAYS visible short code */}
-                              <span
-                                className="inline-flex items-center px-1.5 py-0.5 rounded-md font-mono text-[9px] sm:text-[10px] font-bold bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-300/50 dark:border-zinc-700/60 flex-shrink-0"
-                                title={`Competitor Code: #${competitor.discriminator}`}
-                              >
-                                #{competitor.discriminator}
-                              </span>
-
-                              {isMe && (
-                                <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white flex-shrink-0 shadow-2xs">
-                                  You
+                                {/* ALWAYS visible short code */}
+                                <span
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md font-mono text-[9px] sm:text-[10px] font-bold bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-300/50 dark:border-zinc-700/60 flex-shrink-0"
+                                  title={`Competitor Code: #${competitor.discriminator}`}
+                                >
+                                  #{competitor.discriminator}
                                 </span>
-                              )}
+
+                                {isMe && (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white flex-shrink-0 shadow-2xs">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Competitor Email underneath username */}
+                              {player.email ? (
+                                <span
+                                  className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium truncate max-w-[130px] xs:max-w-[170px] sm:max-w-[230px] leading-tight block select-all pt-0.5"
+                                  title={player.email}
+                                >
+                                  {player.email}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </td>
@@ -859,6 +878,15 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {menuPlayer.email && (
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          <Mail className="w-3.5 h-3.5 flex-shrink-0 text-zinc-400" />
+                          <span className="font-medium truncate max-w-[200px] sm:max-w-xs select-all">
+                            {menuPlayer.email}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-2 flex-wrap text-xs">
                         {mRank && (

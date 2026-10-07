@@ -719,28 +719,52 @@ export function recordCompetitorInteraction(
   }
 }
 
-// 2. Search Ranked Players in Database & Local Cache
+// 2. Search Ranked Players in Database & Local Cache (by Tag, Name, Discriminator, or Email)
 export async function searchRankedPlayers(searchTerm: string): Promise<PublicLeaderboardPlayer[]> {
   const term = searchTerm.trim().toLowerCase();
   if (!term) return [];
 
   const resultsMap = new Map<string, PublicLeaderboardPlayer>();
 
-  // 1. Check local frequent competitors first (instant)
+  // 1. Check verified roster first (local footprint)
+  const roster = getVerifiedRoster();
+  for (const r of roster) {
+    if (isBannedTestPlayer(r.username, r.id) || isBannedTestPlayer(r.tag, r.id) || isBannedTestPlayer(r.name, r.id)) continue;
+    const comp = formatCompetitorIdentity(r);
+    const rEmail = (r.email || '').toLowerCase();
+    if (
+      comp.username.toLowerCase().includes(term) ||
+      comp.discriminator.includes(term) ||
+      comp.formattedTag.toLowerCase().includes(term) ||
+      rEmail.includes(term)
+    ) {
+      resultsMap.set(`${comp.username.toLowerCase()}#${comp.discriminator}`, {
+        ...r,
+        email: r.email || '',
+      });
+    }
+  }
+
+  // 2. Check local frequent competitors (instant)
   const frequent = getFrequentCompetitors();
   for (const f of frequent) {
     if (isBannedTestPlayer(f.username, f.id) || isBannedTestPlayer(f.tag, f.id) || isBannedTestPlayer(f.name, f.id)) continue;
     const comp = formatCompetitorIdentity(f);
+    const fEmail = (f.email || '').toLowerCase();
     if (
       comp.username.toLowerCase().includes(term) ||
       comp.discriminator.includes(term) ||
-      comp.formattedTag.toLowerCase().includes(term)
+      comp.formattedTag.toLowerCase().includes(term) ||
+      fEmail.includes(term)
     ) {
-      resultsMap.set(`${comp.username.toLowerCase()}#${comp.discriminator}`, f);
+      resultsMap.set(`${comp.username.toLowerCase()}#${comp.discriminator}`, {
+        ...f,
+        email: f.email || '',
+      });
     }
   }
 
-  // 2. Check cached leaderboard
+  // 3. Check cached leaderboard
   if (typeof window !== 'undefined') {
     const cached = localStorage.getItem(CACHED_LEADERBOARD_KEY);
     if (cached) {
@@ -749,16 +773,19 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
         for (const p of parsed) {
           if (isBannedTestPlayer(p.username, p.id) || isBannedTestPlayer(p.tag, p.id) || isBannedTestPlayer(p.name, p.id)) continue;
           const comp = formatCompetitorIdentity(p);
+          const pEmail = (p.email || '').toLowerCase();
           if (
             comp.username.toLowerCase().includes(term) ||
             comp.discriminator.includes(term) ||
-            comp.formattedTag.toLowerCase().includes(term)
+            comp.formattedTag.toLowerCase().includes(term) ||
+            pEmail.includes(term)
           ) {
             resultsMap.set(`${comp.username.toLowerCase()}#${comp.discriminator}`, {
               ...p,
               username: comp.username,
               discriminator: comp.discriminator,
               tag: comp.formattedTag,
+              email: p.email || '',
             });
           }
         }
@@ -768,7 +795,7 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
     }
   }
 
-  // 3. Query Firestore if online
+  // 4. Query Firestore if online
   try {
     const playersRef = collection(db, 'players');
     const q = query(playersRef, orderBy('rating', 'desc'), limit(50));
@@ -802,6 +829,7 @@ export async function searchRankedPlayers(searchTerm: string): Promise<PublicLea
           username: comp.username,
           discriminator: comp.discriminator,
           tag: comp.formattedTag,
+          email: data.email || publicData.email || '',
         });
       }
     });
@@ -1547,6 +1575,7 @@ export async function getOnlineLeaderboard(limitCount = 50): Promise<PublicLeade
         discriminator: comp.discriminator,
         tag: comp.formattedTag,
         name: publicData.name || comp.formattedTag,
+        email: data.email || publicData.email || '',
       });
     });
 
@@ -1575,6 +1604,7 @@ export async function getOnlineLeaderboard(limitCount = 50): Promise<PublicLeade
               discriminator: comp.discriminator,
               tag: comp.formattedTag,
               name: p.name || comp.formattedTag,
+              email: p.email || '',
             };
           });
       }
@@ -1869,6 +1899,7 @@ export function addPlayerToRoster(
       discriminator: comp.discriminator,
       tag: comp.formattedTag,
       name: player.name || comp.formattedTag,
+      email: player.email ? player.email.trim() : '',
       color: player.color || '#6366F1',
       rating: player.rating || 100,
       totalMatches: player.totalMatches || 0,
@@ -1900,5 +1931,87 @@ export function removePlayerFromRoster(playerIdOrTag: string): void {
     localStorage.setItem(VERIFIED_ROSTER_KEY, JSON.stringify(filtered));
   } catch (err) {
     console.error('Failed to remove player from roster:', err);
+  }
+}
+
+/**
+ * Scans verified competitor roster stored on device and backfills missing emails
+ * by cross-referencing the cached leaderboard and live Firestore database.
+ * Automatically persists updated records so existing users immediately have their emails present.
+ */
+export async function syncRosterMemberEmails(): Promise<number> {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = localStorage.getItem(VERIFIED_ROSTER_KEY);
+    if (!raw) return 0;
+    const roster = JSON.parse(raw) as (PublicLeaderboardPlayer & { pin?: string })[];
+    if (!Array.isArray(roster) || roster.length === 0) return 0;
+
+    let updatedCount = 0;
+    const cached = getCachedLeaderboard();
+    const cachedMap = new Map<string, PublicLeaderboardPlayer>();
+    for (const c of cached) {
+      const comp = formatCompetitorIdentity(c);
+      cachedMap.set(`${comp.username.toLowerCase()}#${comp.discriminator}`, c);
+      if (c.id) cachedMap.set(c.id, c);
+    }
+
+    for (let i = 0; i < roster.length; i++) {
+      const p = roster[i];
+      if (!p.email || p.email.trim() === '') {
+        const comp = formatCompetitorIdentity(p);
+        const cachedMatch =
+          (p.id ? cachedMap.get(p.id) : null) ||
+          cachedMap.get(`${comp.username.toLowerCase()}#${comp.discriminator}`);
+
+        if (cachedMatch && cachedMatch.email && cachedMatch.email.trim() !== '') {
+          roster[i] = { ...p, email: cachedMatch.email.trim() };
+          updatedCount++;
+        } else {
+          // If online, check Firestore document
+          try {
+            let cloudEmail = '';
+            if (p.id) {
+              const docSnap = await getDoc(doc(db, 'players', p.id));
+              if (docSnap.exists()) {
+                cloudEmail = docSnap.data()?.email || '';
+              }
+            }
+            if (!cloudEmail && comp.username) {
+              const qEmail = query(
+                collection(db, 'players'),
+                where('username_lower', '==', comp.username.toLowerCase()),
+                limit(5)
+              );
+              const snap = await getDocs(qEmail);
+              snap.forEach((d) => {
+                const data = d.data();
+                if (data.discriminator === comp.discriminator && data.email) {
+                  cloudEmail = data.email;
+                }
+              });
+            }
+            if (cloudEmail) {
+              roster[i] = { ...p, email: cloudEmail.trim() };
+              updatedCount++;
+            }
+          } catch {
+            // Offline fallback
+          }
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      localStorage.setItem(VERIFIED_ROSTER_KEY, JSON.stringify(roster));
+      window.dispatchEvent(
+        new CustomEvent('billiard:roster-updated', { detail: { updatedCount } })
+      );
+    }
+
+    return updatedCount;
+  } catch (err) {
+    console.warn('[RankedSync] Failed to backfill roster emails:', err);
+    return 0;
   }
 }

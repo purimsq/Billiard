@@ -8,6 +8,7 @@ import {
   QrCode as QrIcon,
   Share2,
   Loader2,
+  Mail,
 } from 'lucide-react';
 import { RankedPlayerProfile } from '@/lib/rankedSync';
 
@@ -347,6 +348,15 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
                 #{profile.discriminator || '1001'}
               </span>
             </div>
+
+            {profile.email && (
+              <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                <Mail className="w-3 h-3 flex-shrink-0 text-zinc-400" />
+                <span className="font-medium truncate max-w-[180px] xs:max-w-[200px]" title={profile.email}>
+                  {profile.email}
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-2 pt-0.5 text-[10px]">
               <span className="font-black text-amber-500">

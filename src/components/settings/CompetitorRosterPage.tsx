@@ -10,6 +10,7 @@ import {
   UserCheck,
   Eye,
   Loader2,
+  Mail,
 } from 'lucide-react';
 import {
   getVerifiedRoster,
@@ -20,6 +21,7 @@ import {
   getLocalDeviceProfile,
   formatCompetitorIdentity,
   PublicLeaderboardPlayer,
+  syncRosterMemberEmails,
 } from '@/lib/rankedSync';
 import { CompetitorProfileView } from '@/components/tournament/CompetitorProfileView';
 
@@ -49,6 +51,21 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
   const reloadRoster = () => {
     setRoster(getVerifiedRoster());
   };
+
+  // Sync emails on mount for existing roster members and listen for updates
+  useEffect(() => {
+    syncRosterMemberEmails().then(() => {
+      setRoster(getVerifiedRoster());
+    }).catch(() => {});
+
+    const handleRosterUpdated = () => {
+      setRoster(getVerifiedRoster());
+    };
+    window.addEventListener('billiard:roster-updated', handleRosterUpdated);
+    return () => {
+      window.removeEventListener('billiard:roster-updated', handleRosterUpdated);
+    };
+  }, []);
 
   // Debounced search when 3+ characters typed
   useEffect(() => {
@@ -310,6 +327,11 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
                         <span className="font-mono font-black text-xs block truncate">
                           {comp.formattedTag}
                         </span>
+                        {player.email ? (
+                          <span className="text-[10px] text-zinc-400 block truncate" title={player.email}>
+                            {player.email}
+                          </span>
+                        ) : null}
                         <span className="text-[10px] font-bold text-amber-500">
                           ⚔️ {player.rating || 100} ELO • {player.wins || 0}W/{player.losses || 0}L
                         </span>
@@ -414,6 +436,12 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
                           VERIFIED
                         </span>
                       </div>
+                      {player.email ? (
+                        <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                          <Mail className="w-3 h-3 text-zinc-400 flex-shrink-0" />
+                          <span className="truncate select-all" title={player.email}>{player.email}</span>
+                        </div>
+                      ) : null}
                       <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
                         <span className="font-black text-amber-500">
                           ⚔️ {player.rating || 100} ELO

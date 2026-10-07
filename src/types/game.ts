@@ -10,6 +10,7 @@ export interface Player {
   username?: string;
   discriminator?: string;
   rating?: number;
+  email?: string;
   isVerified?: boolean;
 }
 

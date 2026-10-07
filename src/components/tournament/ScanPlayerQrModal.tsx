@@ -15,6 +15,7 @@ export interface ScannedPlayerPayload {
   discriminator?: string;
   tag?: string;
   id?: string;
+  email?: string;
   raw: string;
 }
 
@@ -66,6 +67,7 @@ export const ScanPlayerQrModal: React.FC<ScanPlayerQrModalProps> = ({
           discriminator: parsed.discriminator || '',
           tag: parsed.tag || '',
           id: parsed.id || '',
+          email: parsed.email || '',
           raw: trimmed,
         };
       }
@@ -391,6 +393,11 @@ export const ScanPlayerQrModal: React.FC<ScanPlayerQrModalProps> = ({
               {scannedResult.discriminator && (
                 <span className="font-mono text-xs text-zinc-400">
                   #{scannedResult.discriminator}
+                </span>
+              )}
+              {scannedResult.email && (
+                <span className="text-[11px] text-zinc-400 truncate max-w-[200px] block">
+                  {scannedResult.email}
                 </span>
               )}
             </div>

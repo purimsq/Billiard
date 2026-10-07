@@ -22,6 +22,7 @@ import {
   verifyOfflineCompetitor,
   formatCompetitorIdentity,
   PublicLeaderboardPlayer,
+  syncRosterMemberEmails,
 } from '@/lib/rankedSync';
 import {
   subscribeNetworkHealth,
@@ -139,6 +140,12 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (isOpen) {
+      syncRosterMemberEmails().catch(() => {});
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Host Player object for Ranked Mode
@@ -147,6 +154,7 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
     name: deviceProfile?.username || 'You',
     username: deviceProfile?.username || 'You',
     discriminator: deviceProfile?.discriminator || '1001',
+    email: deviceProfile?.email,
     score: 0,
     color: deviceProfile?.color || '#6366F1',
     avatarBg: deviceProfile?.color || '#6366F1',
@@ -209,6 +217,7 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
     tag?: string;
     color?: string;
     rating?: number;
+    email?: string;
   }) => {
     setError(null);
     const identity = formatCompetitorIdentity(comp);
@@ -247,6 +256,7 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
       name: identity.username,
       username: identity.username,
       discriminator: identity.discriminator,
+      email: comp.email,
       score: 0,
       color: comp.color || getRandomPlayerColor(rankedOpponents.length + 1),
       avatarBg: comp.color || getRandomPlayerColor(rankedOpponents.length + 1),
@@ -707,6 +717,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
                                         </span>
                                       )}
                                     </div>
+                                    {player.email ? (
+                                      <span className="text-[10px] text-zinc-400 block truncate" title={player.email}>
+                                        {player.email}
+                                      </span>
+                                    ) : null}
                                     <span className="text-[10px] font-bold text-amber-500">
                                       ⚔️ {player.rating || 100} ELO • {player.wins || 0}W/{player.losses || 0}L
                                     </span>
@@ -849,6 +864,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
                             HOST (YOU)
                           </span>
                         </div>
+                        {hostPlayer.email ? (
+                          <span className="text-[10px] text-zinc-400 block truncate" title={hostPlayer.email}>
+                            {hostPlayer.email}
+                          </span>
+                        ) : null}
                         <span className="text-[10px] font-bold text-amber-500 block">
                           ⚔️ {hostPlayer.rating || 100} ELO
                         </span>
@@ -904,6 +924,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
                               VERIFIED
                             </span>
                           </div>
+                          {opp.email ? (
+                            <span className="text-[10px] text-zinc-400 block truncate" title={opp.email}>
+                              {opp.email}
+                            </span>
+                          ) : null}
                           <span className="text-[10px] font-bold text-amber-500 block">
                             ⚔️ {opp.rating || 100} ELO
                           </span>
@@ -1066,6 +1091,11 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
                               OFFLINE OK
                             </span>
                           </div>
+                          {player.email ? (
+                            <span className="text-[10px] text-zinc-400 block truncate" title={player.email}>
+                              {player.email}
+                            </span>
+                          ) : null}
                           <span className="text-[10px] font-bold text-amber-500">
                             ⚔️ {player.rating || 100} ELO • {player.wins || 0}W/{player.losses || 0}L
                           </span>
