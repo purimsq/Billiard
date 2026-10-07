@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { RotateCcw, Flag, Plus, Minus, Check, Settings, Flame, Ban, X } from 'lucide-react';
+import { RotateCcw, RotateCw, Flag, Plus, Minus, Check, Settings, Flame, Ban, X } from 'lucide-react';
 import { GameSession } from '@/types/game';
 import { AppSettings } from '@/types/settings';
 import { BALL_DEFINITIONS } from '@/lib/gameLogic';
@@ -236,6 +236,7 @@ export function LiveGameView({
       ...session,
       players: updatedPlayers,
       history: [transaction, ...session.history],
+      redoHistory: [],
       updatedAt: getTimestamp(),
     };
 
@@ -331,10 +332,13 @@ export function LiveGameView({
       p.id === lastTx.playerId ? { ...p, score: revertedScore } : p
     );
 
+    const updatedRedoHistory = [lastTx, ...(session.redoHistory || [])];
+
     onUpdateSession({
       ...session,
       players: updatedPlayers,
       history: remainingHistory,
+      redoHistory: updatedRedoHistory,
       updatedAt: Date.now(),
     });
 
@@ -345,8 +349,14 @@ export function LiveGameView({
         next.delete(targetPlayer.id);
         return next;
       });
+      if (isUnderworldSoundEnabled && targetPlayer.score <= -50) {
+        playCardRepairSound();
+      }
     } else if (isDialogueEnabled) {
       setCrackedPlayerIds((prev) => new Set([...prev, targetPlayer.id]));
+      if (isUnderworldSoundEnabled && targetPlayer.score > -50) {
+        playCardBreakSound();
+      }
     }
 
     setUnderworldAlert(null);
@@ -361,6 +371,68 @@ export function LiveGameView({
       amount: Math.abs(revertAmount),
       newScore: revertedScore,
       subtitle: `Action undone: ${lastTx.playerName}'s score reverted`,
+    });
+
+    toastTimerRef.current = setTimeout(() => {
+      setIsToastExiting(true);
+      exitTimerRef.current = setTimeout(() => {
+        setScoreToast(null);
+        setIsToastExiting(false);
+      }, 300);
+    }, 2400);
+  };
+
+  const handleRedo = () => {
+    const redoStack = session.redoHistory || [];
+    if (redoStack.length === 0) return;
+
+    const [txToRedo, ...remainingRedo] = redoStack;
+    const targetPlayer = session.players.find((p) => p.id === txToRedo.playerId);
+    if (!targetPlayer) return;
+
+    const applyAmount = txToRedo.type === 'add' ? txToRedo.amount : -txToRedo.amount;
+    const redoneScore = targetPlayer.score + applyAmount;
+    const updatedPlayers = session.players.map((p) =>
+      p.id === txToRedo.playerId ? { ...p, score: redoneScore } : p
+    );
+
+    onUpdateSession({
+      ...session,
+      players: updatedPlayers,
+      history: [txToRedo, ...session.history],
+      redoHistory: remainingRedo,
+      updatedAt: Date.now(),
+    });
+
+    // Synchronize cracked state on redo
+    if (redoneScore <= -50 && isDialogueEnabled) {
+      setCrackedPlayerIds((prev) => new Set([...prev, targetPlayer.id]));
+      if (isUnderworldSoundEnabled && targetPlayer.score > -50) {
+        playCardBreakSound();
+      }
+    } else if (redoneScore > -50) {
+      setCrackedPlayerIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetPlayer.id);
+        return next;
+      });
+      if (isUnderworldSoundEnabled && targetPlayer.score <= -50) {
+        playCardRepairSound();
+      }
+    }
+
+    setUnderworldAlert(null);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    setIsToastExiting(false);
+
+    setScoreToast({
+      id: txToRedo.id,
+      type: txToRedo.type,
+      playerName: txToRedo.playerName,
+      amount: txToRedo.amount,
+      newScore: redoneScore,
+      subtitle: `Action redone: ${txToRedo.playerName}'s score restored`,
     });
 
     toastTimerRef.current = setTimeout(() => {
@@ -423,19 +495,35 @@ export function LiveGameView({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <button
+              type="button"
               onClick={handleUndo}
               disabled={session.history.length === 0}
               title="Undo last score action"
-              className={`px-2.5 sm:px-3 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-40 shadow-sm transition active:scale-95 ${
+              className={`px-2 sm:px-2.5 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-35 disabled:pointer-events-none shadow-sm transition active:scale-95 ${
                 isDark
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
                   : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
               }`}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Undo</span>
+              <span className="hidden sm:inline">Undo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={!session.redoHistory || session.redoHistory.length === 0}
+              title="Redo undone score action"
+              className={`px-2 sm:px-2.5 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-35 disabled:pointer-events-none shadow-sm transition active:scale-95 ${
+                isDark
+                  ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
+                  : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+              }`}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Redo</span>
             </button>
 
             {onOpenSettings && (

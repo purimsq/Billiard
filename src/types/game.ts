@@ -28,6 +28,7 @@ export interface GameSession {
   id: string;
   players: Player[];
   history: Transaction[];
+  redoHistory?: Transaction[];
   status: GameState;
   mode?: GameMode; // 'casual' | 'ranked' (defaults to 'casual')
   createdAt: number;
