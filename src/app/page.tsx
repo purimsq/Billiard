@@ -212,13 +212,15 @@ export default function Home() {
     setIsCancelModalOpen(true);
   };
 
-  // Confirmed cancellation: wipe session without saving to history or remote database
+  // Confirmed cancellation: show loading state, then wipe session without saving to history or remote database
   const handleConfirmCancelGame = () => {
-    clearActiveGame();
-    setActiveSession(null);
     setIsCancelModalOpen(false);
     setIsEndGameOpen(false);
-    setCurrentView('home');
+    withLoader('cancel', randMs(2000, 3000), () => {
+      clearActiveGame();
+      setActiveSession(null);
+      setCurrentView('home');
+    });
   };
 
   // end game button → preparing results loader → open the results modal
@@ -243,7 +245,7 @@ export default function Home() {
     setCurrentView('home');
   };
 
-  // play again → brief rack up loader → save finished game, reset scores and start fresh
+  // play again → brief rack up loader → save finished game, reset scores and arrange so loser starts up to winner last
   const handlePlayAgain = () => {
     if (!activeSession) return;
     const completedSession = { ...activeSession };
@@ -259,10 +261,14 @@ export default function Home() {
 
     setIsEndGameOpen(false);
     withLoader('again', randMs(2000, 3500), () => {
-      const resetPlayers = completedSession.players.map((p) => ({ ...p, score: 0 }));
+      // Arrange players so lowest score (loser) starts first, ascending up to 1st place (winner) who plays last
+      const orderedPlayers = [...completedSession.players]
+        .sort((a, b) => a.score - b.score)
+        .map((p) => ({ ...p, score: 0 }));
+
       const newSession: GameSession = {
         id: `game_${Date.now()}`,
-        players: resetPlayers,
+        players: orderedPlayers,
         history: [],
         status: 'live',
         mode: completedSession.mode || 'casual',

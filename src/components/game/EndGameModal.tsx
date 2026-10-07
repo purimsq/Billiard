@@ -290,18 +290,22 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         <div className="grid grid-cols-2 gap-2.5 pt-2">
           <button
             onClick={onNewGame}
-            className={`py-3 px-4 rounded-2xl font-bold text-xs transition ${
+            title="Play again — loser breaks / starts next game"
+            className={`py-2.5 px-4 rounded-2xl font-bold text-xs transition flex flex-col items-center justify-center gap-0.5 ${
               isDark
                 ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
                 : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
             }`}
           >
-            PLAY AGAIN
+            <span>PLAY AGAIN</span>
+            <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Loser breaks
+            </span>
           </button>
 
           <button
             onClick={onDone}
-            className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-md active:scale-95 ${
+            className={`py-2.5 px-4 rounded-2xl font-black text-xs transition shadow-md active:scale-95 flex items-center justify-center ${
               isDark
                 ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
                 : 'bg-zinc-900 hover:bg-indigo-600 text-white'

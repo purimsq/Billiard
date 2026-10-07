@@ -118,7 +118,7 @@ const LoaderText: React.FC<{ label: string; isDark?: boolean }> = ({ label, isDa
 );
 
 // Variant config — maps each loading state to its label and animation type
-export type LoadingVariant = 'quick' | 'game' | 'results' | 'again';
+export type LoadingVariant = 'quick' | 'game' | 'results' | 'again' | 'cancel';
 
 interface LoadingScreenProps {
   variant: LoadingVariant;
@@ -134,6 +134,7 @@ const VARIANT_CONFIG: Record<
   game:    { label: 'Preparing game…',         useBalls: true  },
   results: { label: 'Preparing results…',      useBalls: false },
   again:   { label: 'Racking up…',             useBalls: true  },
+  cancel:  { label: 'Cancelling game…',        useBalls: false },
 };
 
 // Main loading screen overlay
