@@ -532,49 +532,52 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
         </div>
       ) : (
         /* CASE 2: SPORTS LEAGUE TABLE (UEFA / FANATIK RANKING TABLE STYLE) - DIRECTLY ON PAGE */
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
+          {/* Card Table Container - Firmly In-Place & Fully Responsive */}
           <div
-            className={`overflow-x-auto -mx-3 sm:mx-0 rounded-2xl sm:rounded-3xl border shadow-xs transition-all ${
+            className={`w-full rounded-2xl sm:rounded-3xl border shadow-xs transition-all overflow-hidden flex flex-col ${
               isDark
-                ? 'bg-zinc-900/50 border-zinc-800/80 backdrop-blur-xs'
-                : 'bg-white/80 border-zinc-200/90 backdrop-blur-xs'
+                ? 'bg-zinc-900/60 border-zinc-800/80 backdrop-blur-md'
+                : 'bg-white/90 border-zinc-200/90 backdrop-blur-md'
             }`}
           >
-            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-              {/* TABLE HEADER (with crimson / red highlight styling like Fanatik) */}
-              <thead>
-                <tr
-                  className={`border-b select-none transition-colors ${
-                    isDark
-                      ? 'bg-zinc-900/80 border-zinc-800 text-zinc-400'
-                      : 'bg-zinc-100/80 border-zinc-200 text-zinc-600'
+            {/* Scrollable Viewport: Players inside scroll smoothly when they become a lot */}
+            <div className="overflow-x-auto overflow-y-auto max-h-[58vh] sm:max-h-[64vh] overscroll-contain touch-pan-y scroll-smooth">
+              <table className="w-full text-left border-collapse text-xs whitespace-nowrap min-w-[340px] sm:min-w-full">
+                {/* Pinned Sticky Table Header */}
+                <thead className="sticky top-0 z-20 shadow-2xs">
+                  <tr
+                    className={`select-none transition-colors border-b ${
+                      isDark
+                        ? 'bg-zinc-900/95 border-zinc-800 text-zinc-400 backdrop-blur-md'
+                        : 'bg-zinc-100/95 border-zinc-200 text-zinc-600 backdrop-blur-md'
+                    }`}
+                  >
+                    <th className="py-2.5 px-2 sm:px-2.5 w-8 sm:w-10 text-center font-black sticky top-0 z-20 bg-inherit">#</th>
+                    <th className="py-2.5 px-2 sm:px-3 font-black uppercase text-[10px] sm:text-[11px] sticky top-0 z-20 bg-inherit">
+                      Competitor
+                    </th>
+                    <th className="py-2.5 px-1.5 sm:px-2 w-12 sm:w-14 text-center font-black text-rose-600 dark:text-rose-400 text-[10px] sm:text-xs sticky top-0 z-20 bg-inherit">
+                      WR%
+                    </th>
+                    <th className="py-2.5 px-1.5 sm:px-2 w-14 sm:w-16 text-center font-black text-rose-600 dark:text-rose-400 text-[10px] sm:text-xs sticky top-0 z-20 bg-inherit">
+                      PTS
+                    </th>
+                    <th className="py-2.5 px-2 sm:px-2.5 w-14 sm:w-16 text-right font-black text-rose-600 dark:text-rose-400 text-xs sm:text-xs sticky top-0 z-20 bg-inherit">
+                      ELO
+                    </th>
+                    <th className="py-2.5 px-1.5 sm:px-2 w-8 sm:w-10 text-center font-black sticky top-0 z-20 bg-inherit">
+                      <span className="sr-only">More Options</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                {/* TABLE BODY */}
+                <tbody
+                  className={`divide-y ${
+                    isDark ? 'divide-zinc-800/60' : 'divide-zinc-200/70'
                   }`}
                 >
-                  <th className="py-2.5 px-2 sm:px-2.5 w-8 sm:w-10 text-center font-black">#</th>
-                  <th className="py-2.5 px-2 sm:px-3 font-black uppercase text-[10px] sm:text-[11px]">
-                    Competitor
-                  </th>
-                  <th className="py-2.5 px-1.5 sm:px-2 w-12 sm:w-14 text-center font-black text-rose-600 dark:text-rose-400 text-[10px] sm:text-xs">
-                    WR%
-                  </th>
-                  <th className="py-2.5 px-1.5 sm:px-2 w-14 sm:w-16 text-center font-black text-rose-600 dark:text-rose-400 text-[10px] sm:text-xs">
-                    PTS
-                  </th>
-                  <th className="py-2.5 px-2 sm:px-2.5 w-14 sm:w-16 text-right font-black text-rose-600 dark:text-rose-400 text-xs sm:text-xs">
-                    ELO
-                  </th>
-                  <th className="py-2.5 px-1.5 sm:px-2 w-8 sm:w-10 text-center font-black">
-                    <span className="sr-only">More Options</span>
-                  </th>
-                </tr>
-              </thead>
-
-              {/* TABLE BODY */}
-              <tbody
-                className={`divide-y ${
-                  isDark ? 'divide-zinc-800/60' : 'divide-zinc-200/70'
-                }`}
-              >
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="py-14 text-center">
@@ -763,6 +766,23 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
               </tbody>
             </table>
           </div>
+
+          {/* In-Place Bottom Status Indicator when competitor list is scrollable */}
+          {filteredPlayers.length > 5 && (
+            <div
+              className={`py-1.5 px-3.5 text-[10px] font-semibold border-t flex items-center justify-between flex-shrink-0 select-none ${
+                isDark
+                  ? 'bg-zinc-950/40 border-zinc-800/70 text-zinc-400'
+                  : 'bg-zinc-50/70 border-zinc-200/70 text-zinc-500'
+              }`}
+            >
+              <span>{filteredPlayers.length} competitors ranked</span>
+              <span className="text-[9px] font-medium text-zinc-400 dark:text-zinc-500 italic">
+                Scroll for full standings ↓
+              </span>
+            </div>
+          )}
+        </div>
 
           {/* TABLE FOOTER & UEFA QUALIFICATION ZONE LEGEND (Matching Fanatik screenshot!) */}
           <div
