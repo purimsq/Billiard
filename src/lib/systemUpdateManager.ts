@@ -12,10 +12,22 @@ export interface UpdateChangelogItem {
   highlights: string[];
 }
 
-export const BASE_APP_VERSION = '1.4.2';
-export const BUILD_DATE = 'September 28, 2026';
+export const BASE_APP_VERSION = '1.5.0';
+export const BUILD_DATE = 'October 7, 2026';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
+  {
+    version: 'v1.5.0',
+    date: 'October 7, 2026',
+    highlights: [
+      'Tournament Standings: Streamlined responsive card with sticky header, smooth internal roster scrolling, and direct email badges',
+      'Competitor Email Integration: Full email display & dual search filtering across Tournament Standings, Competitor Roster, Match Setup, and Digital QR Pass',
+      'Automatic Roster Email Backfill: Instant background synchronization linking registered competitor emails to offline rosters',
+      'Offline Ranked Auto-Sync Engine: Automated queue flushing on internet restoration with duplicate-push prevention and in-progress match locking',
+      'Enhanced Match UI: Clean live match scoring cards with responsive floating Undo/Redo action controls',
+      'Service Worker v9: Instant background update detection and automated cache refresh',
+    ],
+  },
   {
     version: 'v1.4.2',
     date: 'September 28, 2026',
@@ -344,11 +356,9 @@ export async function runCheckForUpdates(options?: {
   }
 
   // UPDATE AVAILABLE: Begin genuine background installation
-  const targetVersion = forceSimulateNewVersion
-    ? '1.3.0'
-    : hasVersionDiff
+  const targetVersion = (hasVersionDiff && remoteVersion)
     ? remoteVersion
-    : '1.3.0';
+    : (remoteVersion || BASE_APP_VERSION);
 
   clearUpdateTimers();
   updateState({
@@ -398,7 +408,7 @@ export async function runCheckForUpdates(options?: {
 }
 
 export function applySystemUpdate(): void {
-  const versionToApply = currentState.availableVersion || 'v1.2.1';
+  const versionToApply = currentState.availableVersion || `v${BASE_APP_VERSION}`;
   updateState({ isRefreshing: true });
   markUpdateAsPendingApplication(versionToApply);
 
