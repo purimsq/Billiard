@@ -11,6 +11,7 @@ interface EndGameModalProps {
   onNewGame: () => void;
   onCancelGame?: () => void;
   isDark?: boolean;
+  syncStatus?: 'synced' | 'queued' | 'offline';
 }
 
 export const EndGameModal: React.FC<EndGameModalProps> = ({
@@ -20,6 +21,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   onNewGame,
   onCancelGame,
   isDark = false,
+  syncStatus,
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -270,7 +272,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
           </div>
         </div>
 
-        {/* Local Storage Auto-save Notice */}
+        {/* Storage & Sync Status Notice */}
         <div
           className={`px-3 py-2 rounded-xl text-center text-[10px] font-semibold flex items-center justify-center gap-1.5 border ${
             isDark
@@ -278,12 +280,28 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
               : 'bg-zinc-50 border-zinc-200 text-zinc-600'
           }`}
         >
-          <HardDrive className="w-3 h-3 text-zinc-400" />
-          <span>
-            {session.mode === 'ranked'
-              ? 'Submitted & synced to competitive ranked database'
-              : `Saved to device Casual History (${casualLimit} recent matches retained)`}
-          </span>
+          {session.mode === 'ranked' ? (
+            syncStatus === 'queued' || syncStatus === 'offline' ? (
+              <>
+                <HardDrive className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-amber-500 font-extrabold">
+                  Saved to offline queue — will auto-push to tournament table once online
+                </span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-emerald-500 font-extrabold">
+                  Verified & synchronized to competitive tournament database
+                </span>
+              </>
+            )
+          ) : (
+            <>
+              <HardDrive className="w-3 h-3 text-zinc-400" />
+              <span>Saved to device Casual History ({casualLimit} recent matches retained)</span>
+            </>
+          )}
         </div>
 
         {/* Modal Action Buttons */}

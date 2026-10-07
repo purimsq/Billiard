@@ -24,6 +24,8 @@ import {
   getCachedLeaderboard,
   recordTournamentCheckTime,
   sortTournamentStandings,
+  flushPendingRankedSync,
+  getPendingRankedSyncCount,
 } from '@/lib/rankedSync';
 import {
   subscribeNetworkHealth,
@@ -71,6 +73,7 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
   });
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [pendingCount, setPendingCount] = useState<number>(() => getPendingRankedSyncCount());
   const [isCheckingConnection, setIsCheckingConnection] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isScanQrModalOpen, setIsScanQrModalOpen] = useState<boolean>(false);
@@ -119,7 +122,11 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
     if (!network.hasInternet) return;
 
     let isCancelled = false;
-    getOnlineLeaderboard(100)
+    flushPendingRankedSync()
+      .then(() => {
+        if (!isCancelled) setPendingCount(getPendingRankedSyncCount());
+        return getOnlineLeaderboard(100);
+      })
       .then((data) => {
         if (!isCancelled) {
           setPlayers(processStandingsData(data));
@@ -144,7 +151,11 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
     setIsRefreshing(true);
     checkRealInternetConnectivity().then((health) => {
       if (health.hasInternet) {
-        getOnlineLeaderboard(100)
+        flushPendingRankedSync()
+          .then(() => {
+            setPendingCount(getPendingRankedSyncCount());
+            return getOnlineLeaderboard(100);
+          })
           .then((data) => {
             setPlayers(processStandingsData(data));
             recordTournamentCheckTime();
@@ -394,6 +405,20 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
                   <RefreshCw className="w-2.5 h-2.5 animate-spin" />
                   Syncing...
                 </span>
+              </>
+            )}
+            {pendingCount > 0 && (
+              <>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  title="Offline matches waiting to upload to tournament table"
+                  className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-500 font-extrabold text-[10px] flex items-center gap-1 hover:bg-amber-500/25 transition active:scale-95"
+                >
+                  <span>⚡ {pendingCount} offline queued</span>
+                  <span className="underline ml-0.5">Push now</span>
+                </button>
               </>
             )}
           </div>

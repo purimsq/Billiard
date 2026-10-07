@@ -14,6 +14,7 @@ import {
 import { db, ensureAnonymousAuth } from './firebase';
 import { GameSession, Transaction } from '@/types/game';
 import { getGameHistory } from './storage';
+import { checkRealInternetConnectivity } from './networkReachability';
 import {
   calculateSmartMatchElo,
   extractPlayerMatchMetrics,
@@ -955,11 +956,35 @@ export async function verifyOfflineCompetitor(
   };
 }
 
+export interface RankedSyncProgressUpdate {
+  stage: 'fetching' | 'calculating' | 'connecting' | 'pushing' | 'complete' | 'offline_queuing';
+  percent: number;
+  label: string;
+  detail: string;
+}
+
+export interface SubmitRankedMatchResult {
+  success: boolean;
+  offlineQueued: boolean;
+  eloResult?: MatchEloResult;
+  error?: unknown;
+}
+
 // 4. Submit Ranked Match to Firestore & Update Player Ratings via Smart ELO Engine
-export async function submitRankedMatch(session: GameSession): Promise<{ success: boolean; offlineQueued: boolean }> {
+export async function submitRankedMatch(
+  session: GameSession,
+  onProgress?: (update: RankedSyncProgressUpdate) => void
+): Promise<SubmitRankedMatchResult> {
   if (session.mode !== 'ranked') {
     return { success: true, offlineQueued: false };
   }
+
+  onProgress?.({
+    stage: 'fetching',
+    percent: 18,
+    label: 'FETCHING STANDINGS & PROFILES',
+    detail: 'Retrieving latest player ratings & records...',
+  });
 
   // A. Gather competitor profile context for each participant
   const local = getLocalDeviceProfile();
@@ -1010,6 +1035,13 @@ export async function submitRankedMatch(session: GameSession): Promise<{ success
     };
   }
 
+  onProgress?.({
+    stage: 'calculating',
+    percent: 45,
+    label: 'COMPUTING SMART ELO & METRICS',
+    detail: 'Evaluating victory margin, PPG efficiency, breaks & clean play...',
+  });
+
   // B. Run Smart ELO Engine with Points-per-game efficiency and break metrics
   const eloResult = calculateSmartMatchElo(session, profilesMap);
 
@@ -1054,7 +1086,22 @@ export async function submitRankedMatch(session: GameSession): Promise<{ success
   };
 
   try {
+    onProgress?.({
+      stage: 'connecting',
+      percent: 70,
+      label: 'CONNECTING TO RANKED DATABASE',
+      detail: 'Establishing secure link to competitive server...',
+    });
+
     await ensureAnonymousAuth();
+
+    onProgress?.({
+      stage: 'pushing',
+      percent: 88,
+      label: 'PUSHING VERIFIED RESULTS & STANDINGS',
+      detail: 'Updating official standings and competitor records...',
+    });
+
     const matchRef = doc(db, 'ranked_matches', session.id);
     await setDoc(matchRef, payload);
 
@@ -1146,11 +1193,24 @@ export async function submitRankedMatch(session: GameSession): Promise<{ success
     // Immediately update local tournament standings cache
     updateCachedLeaderboardAfterMatch(eloResult);
 
-    return { success: true, offlineQueued: false };
+    onProgress?.({
+      stage: 'complete',
+      percent: 100,
+      label: 'STANDINGS UPDATED & SECURED',
+      detail: 'All competitor records synchronized successfully!',
+    });
+
+    return { success: true, offlineQueued: false, eloResult };
   } catch (err) {
     console.warn('[RankedSync] Network error while uploading ranked match. Storing in offline sync queue:', err);
     queuePendingRankedSync(session);
-    return { success: true, offlineQueued: true };
+    onProgress?.({
+      stage: 'offline_queuing',
+      percent: 100,
+      label: 'SAVED TO OFFLINE QUEUE',
+      detail: 'Match stored safely on device — will auto-sync to tournament server once connected.',
+    });
+    return { success: true, offlineQueued: true, eloResult, error: err };
   }
 }
 
@@ -1335,6 +1395,72 @@ export async function flushPendingRankedSync(): Promise<number> {
     console.error('Failed to flush pending ranked sync:', err);
     return 0;
   }
+}
+
+export function getPendingRankedSyncCount(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_KEY);
+    if (!raw) return 0;
+    const queue = JSON.parse(raw);
+    return Array.isArray(queue) ? queue.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Global background listener that monitors device connectivity (window.online + document.visibilitychange)
+ * and automatically flushes any queued offline ranked matches when internet becomes available.
+ */
+export function startOfflineRankedSyncListener(
+  onSyncSuccess?: (syncedCount: number) => void
+): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  let isFlushing = false;
+
+  const checkAndFlush = async () => {
+    if (isFlushing) return;
+    try {
+      const count = getPendingRankedSyncCount();
+      if (count === 0) return;
+
+      const health = await checkRealInternetConnectivity();
+      if (health.hasInternet) {
+        isFlushing = true;
+        const synced = await flushPendingRankedSync();
+        if (synced > 0 && onSyncSuccess) {
+          onSyncSuccess(synced);
+        }
+      }
+    } catch (e) {
+      console.warn('[RankedSync] Background flush check failed:', e);
+    } finally {
+      isFlushing = false;
+    }
+  };
+
+  const handleOnline = () => {
+    checkAndFlush();
+  };
+
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      checkAndFlush();
+    }
+  };
+
+  window.addEventListener('online', handleOnline);
+  document.addEventListener('visibilitychange', handleVisibility);
+
+  // Check immediately upon initialization
+  checkAndFlush();
+
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    document.removeEventListener('visibilitychange', handleVisibility);
+  };
 }
 
 // 6. Online Leaderboard Query

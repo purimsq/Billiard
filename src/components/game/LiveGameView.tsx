@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { RotateCcw, Flag, Plus, Minus, Check, Settings, Flame, Ban } from 'lucide-react';
+import { RotateCcw, Flag, Plus, Minus, Check, Settings, Flame, Ban, X } from 'lucide-react';
 import { GameSession } from '@/types/game';
 import { AppSettings } from '@/types/settings';
 import { BALL_DEFINITIONS } from '@/lib/gameLogic';
@@ -16,6 +16,15 @@ interface LiveGameViewProps {
   onEndGame: () => void;
   onCancelGame?: () => void;
   onOpenSettings?: () => void;
+}
+
+interface ScoreToastData {
+  id: string;
+  type: 'add' | 'subtract';
+  playerName: string;
+  amount: number;
+  newScore: number;
+  subtitle: string;
 }
 
 function generateId(prefix: string): string {
@@ -46,7 +55,10 @@ export function LiveGameView({
   const [selectedBalls, setSelectedBalls] = useState<number[]>([]);
   const [customInput, setCustomInput] = useState<string>('');
   const [isBallsDrawerOpen, setIsBallsDrawerOpen] = useState<boolean>(false);
-  const [lastNotification, setLastNotification] = useState<string | null>(null);
+  const [scoreToast, setScoreToast] = useState<ScoreToastData | null>(null);
+  const [isToastExiting, setIsToastExiting] = useState<boolean>(false);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const exitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Underworld / Point of No Return alert state
   const [underworldAlert, setUnderworldAlert] = useState<UnderworldAlertData | null>(null);
@@ -229,16 +241,45 @@ export function LiveGameView({
 
     onUpdateSession(updatedSession);
 
-    const sign = scoreMode === 'add' ? '+' : '-';
-    if (scoreMode === 'subtract' && (playerStreaks[selectedPlayer.id] || 0) >= 4) {
-      setLastNotification(`🧊 STREAK EXTINGUISHED! ${selectedPlayer.name}: -${currentInputValue} pts`);
-    } else {
-      setLastNotification(`${selectedPlayer.name}: ${sign}${currentInputValue} pts`);
-    }
-    setTimeout(() => setLastNotification(null), 2500);
+    // Trigger rich floating score toast
+    const isExtinguish = scoreMode === 'subtract' && (playerStreaks[selectedPlayer.id] || 0) >= 4;
+    const subtitle = isExtinguish
+      ? `🧊 Streak extinguished! ${selectedPlayer.name} now at ${newScore} pts`
+      : `${selectedPlayer.name}'s score is now ${newScore} pts`;
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    setIsToastExiting(false);
+
+    setScoreToast({
+      id: transaction.id,
+      type: scoreMode,
+      playerName: selectedPlayer.name,
+      amount: currentInputValue,
+      newScore,
+      subtitle,
+    });
+
+    toastTimerRef.current = setTimeout(() => {
+      setIsToastExiting(true);
+      exitTimerRef.current = setTimeout(() => {
+        setScoreToast(null);
+        setIsToastExiting(false);
+      }, 300);
+    }, 2400);
 
     setSelectedBalls([]);
     setCustomInput('');
+  };
+
+  const handleDismissToast = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    setIsToastExiting(true);
+    exitTimerRef.current = setTimeout(() => {
+      setScoreToast(null);
+      setIsToastExiting(false);
+    }, 300);
   };
 
   const handleSequenceComplete = (completedAlert: UnderworldAlertData) => {
@@ -309,8 +350,26 @@ export function LiveGameView({
     }
 
     setUnderworldAlert(null);
-    setLastNotification(`Undid last score for ${lastTx.playerName}`);
-    setTimeout(() => setLastNotification(null), 2500);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    setIsToastExiting(false);
+
+    setScoreToast({
+      id: lastTx.id,
+      type: revertAmount > 0 ? 'add' : 'subtract',
+      playerName: lastTx.playerName,
+      amount: Math.abs(revertAmount),
+      newScore: revertedScore,
+      subtitle: `Action undone: ${lastTx.playerName}'s score reverted`,
+    });
+
+    toastTimerRef.current = setTimeout(() => {
+      setIsToastExiting(true);
+      exitTimerRef.current = setTimeout(() => {
+        setScoreToast(null);
+        setIsToastExiting(false);
+      }, 300);
+    }, 2400);
   };
 
   const isTargetCracked = isDialogueEnabled && (selectedPlayer ? crackedPlayerIds.has(selectedPlayer.id) : false);
@@ -419,19 +478,6 @@ export function LiveGameView({
             </button>
           </div>
         </div>
-
-        {/* Toast Notification */}
-        {lastNotification && (
-          <div
-            className={`px-3 py-1 rounded-xl text-xs font-bold text-center shadow-md animate-fadeIn ${
-              isDark
-                ? 'bg-zinc-800 text-zinc-100 border border-zinc-700'
-                : 'bg-zinc-900 text-white'
-            }`}
-          >
-            {lastNotification}
-          </div>
-        )}
 
         {/* player cards grid */}
         <div className="flex-1 overflow-y-auto pr-1 py-1">
@@ -663,12 +709,80 @@ export function LiveGameView({
 
       {/* bottom calculator panel */}
       <div
-        className={`rounded-t-3xl border-t shadow-2xl p-4 sm:p-5 min-h-[38vh] flex flex-col justify-between space-y-3 z-20 transition-colors ${
+        className={`rounded-t-3xl border-t shadow-2xl p-4 sm:p-5 min-h-[38vh] flex flex-col justify-between space-y-3 z-20 transition-colors relative ${
           isDark
             ? 'bg-zinc-900 border-zinc-800 text-zinc-100'
             : 'bg-white border-zinc-200 text-zinc-900'
         }`}
       >
+        {/* Score Confirmation Animated Toast (Emerges from behind calculator panel top rim, drops back behind when done) */}
+        {scoreToast && (
+          <div
+            className={`absolute -top-16 sm:-top-18 left-1/2 -translate-x-1/2 -z-10 w-[92%] sm:w-auto min-w-[280px] max-w-sm pointer-events-auto transition-all duration-300 ease-out ${
+              isToastExiting
+                ? 'translate-y-12 opacity-0 scale-95 pointer-events-none'
+                : 'translate-y-0 opacity-100 scale-100'
+            }`}
+          >
+            <div
+              className={`px-3.5 py-2.5 rounded-2xl border flex items-center justify-between gap-3 shadow-xl backdrop-blur-md transition-all ${
+                scoreToast.type === 'add'
+                  ? isDark
+                    ? 'bg-zinc-900/95 border-emerald-500/50 text-zinc-100 shadow-emerald-950/40'
+                    : 'bg-white/95 border-emerald-500/50 text-zinc-900 shadow-emerald-900/15'
+                  : isDark
+                  ? 'bg-zinc-900/95 border-rose-500/50 text-zinc-100 shadow-rose-950/40'
+                  : 'bg-white/95 border-rose-500/50 text-zinc-900 shadow-rose-900/15'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    scoreToast.type === 'add'
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-500'
+                      : 'bg-rose-500/15 border border-rose-500/30 text-rose-500'
+                  }`}
+                >
+                  {scoreToast.type === 'add' ? (
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  ) : (
+                    <Ban className="w-3.5 h-3.5 stroke-[2.5]" />
+                  )}
+                </div>
+
+                <div className="text-left min-w-0 pr-1">
+                  <div className="text-xs font-black tracking-tight leading-tight flex items-center gap-1">
+                    <span>
+                      {scoreToast.type === 'add'
+                        ? `+${scoreToast.amount} pts added`
+                        : `-${scoreToast.amount} pts deducted`}
+                    </span>
+                    <span className="text-[10px] font-bold text-zinc-400">
+                      ({scoreToast.playerName})
+                    </span>
+                  </div>
+                  <p
+                    className={`text-[10px] font-medium truncate leading-tight mt-0.5 ${
+                      isDark ? 'text-zinc-400' : 'text-zinc-500'
+                    }`}
+                  >
+                    {scoreToast.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDismissToast}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition active:scale-90"
+                aria-label="Dismiss toast"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* mode toggle and active player */}
         <div
           className={`flex items-center justify-between gap-2 pb-2 border-b ${

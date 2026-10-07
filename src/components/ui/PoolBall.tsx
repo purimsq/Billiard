@@ -51,6 +51,8 @@ export const PoolBall: React.FC<PoolBallProps> = ({
       <div
         className={`relative rounded-full flex items-center justify-center ball-shadow ${sizeClasses}`}
         style={{
+          forcedColorAdjust: 'none',
+          WebkitPrintColorAdjust: 'exact',
           backgroundColor: ball.isStripe ? '#FFFFFF' : ball.bgHex,
           color: ball.textHex,
         }}
@@ -60,6 +62,7 @@ export const PoolBall: React.FC<PoolBallProps> = ({
           <div
             className="absolute inset-0 rounded-full overflow-hidden"
             style={{
+              forcedColorAdjust: 'none',
               background: `linear-gradient(180deg, transparent 20%, ${ball.bgHex} 20%, ${ball.bgHex} 80%, transparent 80%)`,
             }}
           />
@@ -68,9 +71,15 @@ export const PoolBall: React.FC<PoolBallProps> = ({
         {/* 3D Highlight Shine */}
         <div className="absolute top-1 left-2.5 w-1/3 h-1/3 rounded-full bg-white/40 blur-[1px] pointer-events-none" />
 
-        {/* Inner number circle */}
+        {/* Inner number circle - protected from heuristic dark mode and accessibility font overrides */}
         <div
-          className={`relative z-10 rounded-full bg-white text-zinc-900 flex items-center justify-center font-extrabold shadow-sm ${innerCircleSize}`}
+          className={`relative z-10 rounded-full flex items-center justify-center font-extrabold shadow-sm ${innerCircleSize}`}
+          style={{
+            forcedColorAdjust: 'none',
+            WebkitPrintColorAdjust: 'exact',
+            backgroundColor: '#FFFFFF',
+            color: '#18181B',
+          }}
         >
           {ball.number}
         </div>

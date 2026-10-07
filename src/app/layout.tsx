@@ -50,6 +50,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Billiard" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="Billiard" />
+        <meta name="color-scheme" content="light dark" />
       </head>
       <body className="antialiased select-none touch-manipulation">
         {children}

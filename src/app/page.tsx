@@ -22,10 +22,12 @@ import { checkRealInternetConnectivity } from '@/lib/networkReachability';
 import {
   submitRankedMatch,
   recordCasualMatchForProfiles,
-  flushPendingRankedSync,
   getLocalDeviceProfile,
   checkAndSyncTournamentResults,
+  startOfflineRankedSyncListener,
 } from '@/lib/rankedSync';
+import { RankedSyncProgressModal } from '@/components/game/RankedSyncProgressModal';
+import { MatchEloResult } from '@/lib/smartElo';
 
 const emptySubscribe = () => () => {};
 
@@ -80,6 +82,9 @@ export default function Home() {
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(false);
   const [isEndGameOpen, setIsEndGameOpen] = useState<boolean>(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+  const [isRankedSyncModalOpen, setIsRankedSyncModalOpen] = useState<boolean>(false);
+  const [rankedSyncStatus, setRankedSyncStatus] = useState<'synced' | 'queued' | undefined>(undefined);
+  const [rankedMatchAlreadySaved, setRankedMatchAlreadySaved] = useState<boolean>(false);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     if (typeof window !== 'undefined') {
@@ -160,16 +165,25 @@ export default function Home() {
       });
     }
 
-    // When entering the app, check if online, flush pending ranked matches, check tournament results & updates
+    // Automatic offline ranked match listener: flushes whenever device reconnects or returns to foreground
+    const stopSyncListener = startOfflineRankedSyncListener((count) => {
+      console.log(`[RankedSync] Automatically synchronized ${count} offline ranked match(es).`);
+      checkAndSyncTournamentResults({ isAutomatic: true });
+    });
+
+    // When entering the app, check if online, check tournament results & updates
     checkRealInternetConnectivity().then((health) => {
       if (health.hasInternet) {
-        flushPendingRankedSync();
         checkAndSyncTournamentResults({ isAutomatic: true });
         setTimeout(() => {
           runCheckForUpdates({ isAutomatic: true });
         }, 1800);
       }
     });
+
+    return () => {
+      stopSyncListener();
+    };
   }, []);
 
   const handleUpdateSession = (updated: GameSession) => {
@@ -223,22 +237,44 @@ export default function Home() {
     });
   };
 
-  // end game button → preparing results loader → open the results modal
+  // end game button → for ranked: calculate ELO & sync live via progress bar; for casual: standard quick loader
   const handleEndGameClick = () => {
-    withLoader('results', randMs(2500, 4000), () => setIsEndGameOpen(true));
+    if (activeSession?.mode === 'ranked') {
+      setIsRankedSyncModalOpen(true);
+    } else {
+      withLoader('results', randMs(2500, 4000), () => setIsEndGameOpen(true));
+    }
+  };
+
+  const handleRankedSyncComplete = (
+    completedSession: GameSession,
+    eloResult: MatchEloResult | null,
+    syncStatus: 'synced' | 'queued'
+  ) => {
+    // Save to local device match history immediately so it's guaranteed safe
+    saveGameToHistory(completedSession);
+    setRankedSyncStatus(syncStatus);
+    setRankedMatchAlreadySaved(true);
+    setIsRankedSyncModalOpen(false);
+    setIsEndGameOpen(true);
   };
 
   const handleDoneEndGame = () => {
     if (activeSession) {
-      saveGameToHistory(activeSession);
       if (activeSession.mode === 'ranked') {
-        submitRankedMatch(activeSession).catch((err) => {
-          console.warn('[RankedSync] Match submission deferred/offline:', err);
-        });
+        if (!rankedMatchAlreadySaved) {
+          saveGameToHistory(activeSession);
+          submitRankedMatch(activeSession).catch((err) => {
+            console.warn('[RankedSync] Match submission deferred/offline:', err);
+          });
+        }
       } else {
+        saveGameToHistory(activeSession);
         recordCasualMatchForProfiles(activeSession);
       }
     }
+    setRankedMatchAlreadySaved(false);
+    setRankedSyncStatus(undefined);
     clearActiveGame();
     setActiveSession(null);
     setIsEndGameOpen(false);
@@ -249,15 +285,20 @@ export default function Home() {
   const handlePlayAgain = () => {
     if (!activeSession) return;
     const completedSession = { ...activeSession };
-    // Save the finished match to local history (and sync if ranked)
-    saveGameToHistory(completedSession);
+    // Save the finished match to local history (and sync if ranked, if not already submitted)
     if (completedSession.mode === 'ranked') {
-      submitRankedMatch(completedSession).catch((err) => {
-        console.warn('[RankedSync] Match submission deferred/offline:', err);
-      });
+      if (!rankedMatchAlreadySaved) {
+        saveGameToHistory(completedSession);
+        submitRankedMatch(completedSession).catch((err) => {
+          console.warn('[RankedSync] Match submission deferred/offline:', err);
+        });
+      }
     } else {
+      saveGameToHistory(completedSession);
       recordCasualMatchForProfiles(completedSession);
     }
+    setRankedMatchAlreadySaved(false);
+    setRankedSyncStatus(undefined);
 
     setIsEndGameOpen(false);
     withLoader('again', randMs(2000, 3500), () => {
@@ -384,6 +425,17 @@ export default function Home() {
         isDark={settings.darkMode}
       />
 
+      {/* ranked results live sync & ELO progress modal */}
+      {activeSession && activeSession.mode === 'ranked' && (
+        <RankedSyncProgressModal
+          key={activeSession.id}
+          session={activeSession}
+          isOpen={isRankedSyncModalOpen}
+          isDark={settings.darkMode}
+          onComplete={handleRankedSyncComplete}
+        />
+      )}
+
       {/* end game results modal */}
       {activeSession && (
         <EndGameModal
@@ -393,6 +445,7 @@ export default function Home() {
           onNewGame={handlePlayAgain}
           onCancelGame={handleRequestCancelGame}
           isDark={settings.darkMode}
+          syncStatus={rankedSyncStatus}
         />
       )}
 
