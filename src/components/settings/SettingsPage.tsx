@@ -451,7 +451,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setIsRestorePageOpen(true)}
+                  onClick={() => {
+                    if (network.hasInternet) {
+                      setIsRestorePageOpen(true);
+                    }
+                  }}
                   disabled={!network.hasInternet}
                   className={`py-3 px-4 rounded-2xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all border active:scale-95 ${
                     !network.hasInternet
@@ -460,9 +464,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       ? 'border-indigo-500/40 hover:border-indigo-400 hover:bg-indigo-950/40 text-indigo-300 cursor-pointer'
                       : 'border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 cursor-pointer'
                   }`}
-                  title="Restore an existing player identity with Tag/Email & PIN"
+                  title={network.hasInternet ? "Restore an existing player identity with Tag/Email & PIN" : "Internet connection required to restore profile"}
                 >
-                  <LogIn className="w-4 h-4" />
+                  {network.hasInternet ? <LogIn className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
                   <span>Restore Profile</span>
                 </button>
               </div>

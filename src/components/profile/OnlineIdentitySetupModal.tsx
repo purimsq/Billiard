@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import {
   X,
   ArrowRight,
@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   CheckCircle2,
+  WifiOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import QRCode from 'qrcode';
@@ -24,6 +25,10 @@ import {
   registerPlayerProfile,
   RankedPlayerProfile,
 } from '@/lib/rankedSync';
+import {
+  subscribeNetworkHealth,
+  getNetworkHealthSnapshot,
+} from '@/lib/networkReachability';
 
 interface OnlineIdentitySetupModalProps {
   isOpen: boolean;
@@ -49,6 +54,12 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
   onOpenRestore,
   isDark,
 }) => {
+  const network = useSyncExternalStore(
+    subscribeNetworkHealth,
+    getNetworkHealthSnapshot,
+    getNetworkHealthSnapshot
+  );
+
   // Step state (1 through 6)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
 
@@ -840,14 +851,28 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
                   <button
                     type="button"
                     onClick={() => {
-                      onClose();
-                      onOpenRestore();
+                      if (network.hasInternet) {
+                        onClose();
+                        onOpenRestore();
+                      }
                     }}
-                    className={`text-xs font-bold transition hover:underline underline-offset-4 ${
-                      isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'
+                    disabled={!network.hasInternet}
+                    className={`text-xs font-bold transition flex items-center justify-center gap-1.5 mx-auto ${
+                      !network.hasInternet
+                        ? 'text-zinc-400 dark:text-zinc-600 cursor-not-allowed opacity-60'
+                        : isDark
+                        ? 'text-indigo-400 hover:text-indigo-300 hover:underline underline-offset-4 cursor-pointer'
+                        : 'text-indigo-600 hover:text-indigo-700 hover:underline underline-offset-4 cursor-pointer'
                     }`}
                   >
-                    Already registered? Restore existing profile →
+                    {!network.hasInternet ? (
+                      <>
+                        <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Restore Profile (Internet Required)</span>
+                      </>
+                    ) : (
+                      <span>Already registered? Restore existing profile →</span>
+                    )}
                   </button>
                 </div>
               )}

@@ -232,3 +232,22 @@
 .animate-pulseSubtle {
   animation: pulseSubtle 1.6s ease-in-out infinite;
 }
+
+/* Universal Keyframes for Spinners */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes arcSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
