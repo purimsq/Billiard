@@ -498,21 +498,54 @@ export async function restorePlayerProfile(
         matchedDoc = snap.docs[0];
       }
     } 
-    // B. Check if identifier contains a tag (e.g. Dylen #1001 or dylen#1001)
+    // B. Check if identifier contains a tag with # (e.g. "Dylen #1001", "Dylen#1001", "Dylen # 1001")
     else if (cleanId.includes('#')) {
       const parts = cleanId.split('#');
       const u = parts[0].trim().toLowerCase();
-      const d = parts[1].trim().padStart(4, '0');
-      const qTag = query(playersRef, where('username_lower', '==', u), where('discriminator', '==', d), limit(1));
-      const snap = await getDocs(qTag);
-      if (!snap.empty) {
-        matchedDoc = snap.docs[0];
+      const rawDigits = parts.slice(1).join('').replace(/[^0-9]/g, '').trim();
+      const d = rawDigits ? rawDigits.padStart(4, '0') : '';
+      if (d) {
+        const qTag = query(playersRef, where('username_lower', '==', u), where('discriminator', '==', d), limit(1));
+        const snap = await getDocs(qTag);
+        if (!snap.empty) {
+          matchedDoc = snap.docs[0];
+        }
       }
-    } 
-    // C. Check if identifier is just username (e.g. Dylen)
-    else {
-      const u = cleanId.toLowerCase();
-      const qUser = query(playersRef, where('username_lower', '==', u), limit(10));
+    }
+    // C. Check if user typed digits with space but without # (e.g. "Dylen 1001", "Dylen   1001")
+    else if (/^(.+?)\s+(\d{1,4})$/.test(cleanId)) {
+      const match = cleanId.match(/^(.+?)\s+(\d{1,4})$/);
+      if (match) {
+        const u = match[1].trim().toLowerCase();
+        const d = match[2].trim().padStart(4, '0');
+        const qTag = query(playersRef, where('username_lower', '==', u), where('discriminator', '==', d), limit(1));
+        const snap = await getDocs(qTag);
+        if (!snap.empty) {
+          matchedDoc = snap.docs[0];
+        }
+      }
+    }
+    // D. Check if user typed name joined with 4 digits without space or # (e.g. "Dylen1001")
+    else if (/^([a-zA-Z_.-]{2,})(\d{4})$/.test(cleanId)) {
+      const match = cleanId.match(/^([a-zA-Z_.-]{2,})(\d{4})$/);
+      if (match) {
+        const u = match[1].trim().toLowerCase();
+        const d = match[2].trim();
+        const qTag = query(playersRef, where('username_lower', '==', u), where('discriminator', '==', d), limit(1));
+        const snap = await getDocs(qTag);
+        if (!snap.empty) {
+          matchedDoc = snap.docs[0];
+        }
+      }
+    }
+
+    // E. Fallback: Search by username only (e.g. "Dylen" or if discriminator didn't match directly)
+    if (!matchedDoc && !cleanId.includes('@')) {
+      // Strip any trailing digits or # to get base username
+      const cleanBaseUser = cleanId.split('#')[0].replace(/\s+\d+$/, '').trim().toLowerCase();
+      const uToSearch = cleanBaseUser || cleanId.toLowerCase();
+
+      const qUser = query(playersRef, where('username_lower', '==', uToSearch), limit(10));
       const snap = await getDocs(qUser);
       if (!snap.empty) {
         for (const docSnap of snap.docs) {

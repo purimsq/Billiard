@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   ArrowLeft,
   Mail,
@@ -12,6 +13,7 @@ import {
   Sparkles,
   ShieldCheck,
   Check,
+  Info,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { restorePlayerProfile, RankedPlayerProfile } from '@/lib/rankedSync';
@@ -36,6 +38,18 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [restoredProfile, setRestoredProfile] = useState<RankedPlayerProfile | null>(null);
 
+  // Loading state after slide-in animation before fields appear
+  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // Loading state: after sliding animation (0.38s), loads before fields appear smoothly
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
   // Close on Escape key press
   useEffect(() => {
     if (!isOpen) return;
@@ -50,11 +64,122 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
 
   if (!isOpen) return null;
 
-  // Email format validation checker
-  const isEmailInput = identifier.includes('@');
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  const isEmailValid = isEmailInput ? emailRegex.test(identifier.trim()) : true;
-  const showEmailFormatError = isEmailInput && identifier.trim().length > 3 && !isEmailValid;
+  // Real-time smart validator for email, player tag permutations, and usernames
+  const getIdentifierFeedback = (raw: string) => {
+    const val = raw.trim();
+    if (!val) return null;
+
+    // 1. Email detection (contains '@')
+    if (val.includes('@')) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (emailRegex.test(val)) {
+        return {
+          status: 'valid' as const,
+          message: 'Valid email address format',
+        };
+      }
+      return {
+        status: 'warning' as const,
+        message: 'Incomplete email format (e.g. name@example.com)',
+      };
+    }
+
+    // 2. Player Tag with '#' (e.g. "Dylen #1001", "Dylen#1001", "Dylen # 1001", "Dylen# 1001")
+    if (val.includes('#')) {
+      const parts = val.split('#');
+      const name = parts[0].trim();
+      const rawDigits = parts.slice(1).join('').replace(/[^0-9]/g, '').trim();
+
+      if (!name) {
+        return {
+          status: 'warning' as const,
+          message: 'Please enter username before # (e.g. Dylen #1001)',
+        };
+      }
+      if (name.length < 2) {
+        return {
+          status: 'warning' as const,
+          message: 'Username must be at least 2 characters',
+        };
+      }
+
+      if (rawDigits.length === 4) {
+        return {
+          status: 'valid' as const,
+          message: `Recognized Player Tag: ${name} #${rawDigits}`,
+        };
+      } else if (rawDigits.length > 0 && rawDigits.length < 4) {
+        return {
+          status: 'warning' as const,
+          message: `Short code needs 4 digits (#${rawDigits.padEnd(4, '•')})`,
+        };
+      } else if (rawDigits.length > 4) {
+        return {
+          status: 'warning' as const,
+          message: 'Short code cannot exceed 4 digits',
+        };
+      }
+      return {
+        status: 'warning' as const,
+        message: 'Enter 4-digit code after # (e.g. #1001)',
+      };
+    }
+
+    // 3. User spaced after name then input short number WITHOUT '#' (e.g. "Dylen 1001", "Dylen   1001")
+    const spaceNumMatch = val.match(/^(.+?)\s+(\d+)$/);
+    if (spaceNumMatch) {
+      const name = spaceNumMatch[1].trim();
+      const digits = spaceNumMatch[2];
+
+      if (name.length < 2) {
+        return {
+          status: 'warning' as const,
+          message: 'Username must be at least 2 characters',
+        };
+      }
+
+      if (digits.length === 4) {
+        return {
+          status: 'valid' as const,
+          message: `Detected Player Tag: ${name} #${digits} (auto-formatted)`,
+        };
+      } else if (digits.length < 4) {
+        return {
+          status: 'warning' as const,
+          message: `Short code needs 4 digits (e.g. ${name} #${digits.padEnd(4, '•')})`,
+        };
+      } else {
+        return {
+          status: 'warning' as const,
+          message: 'Short code cannot exceed 4 digits',
+        };
+      }
+    }
+
+    // 4. User typed name joined with 4 digits without space or '#' (e.g. "Dylen1001")
+    const joinedNumMatch = val.match(/^([a-zA-Z_.-]{2,})(\d{4})$/);
+    if (joinedNumMatch) {
+      return {
+        status: 'valid' as const,
+        message: `Recognized Tag: ${joinedNumMatch[1]} #${joinedNumMatch[2]} (or name "${val}")`,
+      };
+    }
+
+    // 5. User entered only their username without '#' or number (e.g. "Dylen")
+    if (val.length < 2) {
+      return {
+        status: 'warning' as const,
+        message: 'Username must be at least 2 characters',
+      };
+    }
+
+    return {
+      status: 'neutral' as const,
+      message: `Username "${val}" — PIN will verify your account`,
+    };
+  };
+
+  const validationFeedback = getIdentifierFeedback(identifier);
 
   const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
@@ -79,13 +204,21 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
       return;
     }
 
-    if (isEmailInput && !isEmailValid) {
-      setErrorMessage('Please enter a valid email format (e.g., name@example.com).');
-      return;
+    if (cleanId.includes('@')) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(cleanId)) {
+        setErrorMessage('Please enter a valid email format (e.g., name@example.com).');
+        return;
+      }
     }
 
     if (cleanPin.length !== 4) {
       setErrorMessage('Please enter your 4-digit Security PIN.');
+      return;
+    }
+
+    if (validationFeedback && validationFeedback.status === 'warning') {
+      setErrorMessage(validationFeedback.message);
       return;
     }
 
@@ -110,7 +243,7 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
         onComplete(result.profile!);
       }, 1600);
     } else {
-      setErrorMessage(result.error || 'Unable to verify credentials. Please verify your details.');
+      setErrorMessage(result.error || 'Invalid credentials. Please verify your details.');
     }
   };
 
@@ -147,11 +280,18 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
           </span>
         </div>
 
-        {/* Brand Header */}
+        {/* Brand Header with Actual Favicon App Logo */}
         <div className="text-center space-y-2 pt-2">
-          {/* Logo badge */}
-          <div className="mx-auto w-14 h-14 rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white text-2xl shadow-xl shadow-indigo-500/25 select-none">
-            🎱
+          {/* Actual Favicon Logo Image */}
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-white/95 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 p-2 shadow-xl shadow-indigo-500/10 flex items-center justify-center">
+            <Image
+              src="/icon-192.png"
+              alt="Billiard Favicon Logo"
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-xl object-contain drop-shadow-sm select-none"
+              priority
+            />
           </div>
 
           <div className="space-y-0.5">
@@ -183,9 +323,59 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
           </div>
         </div>
 
-        {/* Main Content Form / Success State */}
+        {/* Main Content Area: Loading state OR Smoothly loaded form/success */}
         <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full pb-8">
-          {restoredProfile ? (
+          {isPageLoading ? (
+            /* Dedicated Loading State: loads after sliding animation before fields appear */
+            <div
+              className={`p-6 sm:p-7 rounded-3xl border shadow-xl space-y-6 animate-fadeIn ${
+                isDark
+                  ? 'bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/40'
+                  : 'bg-white border-zinc-200 text-zinc-900 shadow-xl'
+              }`}
+            >
+              {/* Spinning Ring & Cloud Connection Indicator */}
+              <div className="flex flex-col items-center justify-center py-5 space-y-3.5">
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-12 h-12 rounded-full bg-indigo-500/20 animate-ping opacity-60" />
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#6366F1' : '#4338CA',
+                      borderRightColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(67,56,202,0.3)',
+                      borderBottomColor: 'transparent',
+                      borderLeftColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(67,56,202,0.1)',
+                      borderRadius: '50%',
+                      animation: 'arcSpin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+                    }}
+                  />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulseSubtle">
+                    Loading Account Recovery…
+                  </p>
+                  <p className={`text-[11px] font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                    Connecting to cloud database &amp; preparing fields
+                  </p>
+                </div>
+              </div>
+
+              {/* Skeleton fields mimicking the actual input layout */}
+              <div className="space-y-4 animate-pulseSubtle">
+                <div className="space-y-1.5">
+                  <div className={`h-3 w-36 rounded-full ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                  <div className={`h-11 w-full rounded-2xl ${isDark ? 'bg-zinc-950/70 border border-zinc-800' : 'bg-zinc-100 border border-zinc-200'}`} />
+                </div>
+                <div className="space-y-1.5">
+                  <div className={`h-3 w-28 rounded-full ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                  <div className={`h-11 w-full rounded-2xl ${isDark ? 'bg-zinc-950/70 border border-zinc-800' : 'bg-zinc-100 border border-zinc-200'}`} />
+                </div>
+                <div className={`h-12 w-full rounded-2xl ${isDark ? 'bg-indigo-950/40 border border-indigo-900/30' : 'bg-indigo-100/60 border border-indigo-200'}`} />
+              </div>
+            </div>
+          ) : restoredProfile ? (
             /* Celebration Success Card */
             <div
               className={`p-6 sm:p-7 rounded-3xl border text-center space-y-4 animate-scaleUp shadow-xl ${
@@ -232,10 +422,10 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
               </div>
             </div>
           ) : (
-            /* Restoration Form Card */
+            /* Restoration Form Card — Smoothly fades in and glides up after page loading */
             <form
               onSubmit={handleSubmit}
-              className={`p-6 sm:p-7 rounded-3xl border shadow-xl space-y-5 transition-all ${
+              className={`p-6 sm:p-7 rounded-3xl border shadow-xl space-y-5 animate-smoothFadeUp transition-all ${
                 isDark
                   ? 'bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/40'
                   : 'bg-white border-zinc-200 text-zinc-900 shadow-xl'
@@ -256,16 +446,31 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
                     htmlFor="restore-identifier"
                     className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
                   >
-                    {isEmailInput ? (
+                    {identifier.includes('@') ? (
                       <Mail className="w-3.5 h-3.5 text-indigo-500" />
                     ) : (
                       <User className="w-3.5 h-3.5 text-indigo-500" />
                     )}
                     <span>Player Tag or Email</span>
                   </label>
-                  {isEmailInput && isEmailValid && (
-                    <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Valid email format
+                  {validationFeedback && (
+                    <span
+                      className={`text-[10px] font-bold flex items-center gap-1 ${
+                        validationFeedback.status === 'valid'
+                          ? 'text-emerald-500'
+                          : validationFeedback.status === 'warning'
+                          ? 'text-amber-500'
+                          : 'text-indigo-400'
+                      }`}
+                    >
+                      {validationFeedback.status === 'valid' ? (
+                        <Check className="w-3 h-3" />
+                      ) : validationFeedback.status === 'warning' ? (
+                        <AlertCircle className="w-3 h-3" />
+                      ) : (
+                        <Info className="w-3 h-3" />
+                      )}
+                      <span>{validationFeedback.message}</span>
                     </span>
                   )}
                 </div>
@@ -277,10 +482,12 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
                     value={identifier}
                     onChange={handleIdentifierChange}
                     autoFocus
-                    placeholder="e.g. Dylen #1001 or dylen@example.com"
+                    placeholder="e.g. Dylen #1001, Dylen 1001, or name@example.com"
                     className={`w-full px-4 py-3 rounded-2xl border text-sm font-semibold transition focus:outline-none focus:ring-2 ${
-                      showEmailFormatError
-                        ? 'border-amber-500/70 focus:ring-amber-500/40'
+                      validationFeedback?.status === 'warning'
+                        ? 'border-amber-500/70 focus:ring-amber-500/40 focus:border-amber-500'
+                        : validationFeedback?.status === 'valid'
+                        ? 'border-emerald-500/60 focus:ring-emerald-500/40 focus:border-emerald-500'
                         : isDark
                         ? 'bg-zinc-950/70 border-zinc-800 text-white focus:ring-indigo-500/40 focus:border-indigo-500'
                         : 'bg-zinc-50 border-zinc-300 text-zinc-900 focus:ring-indigo-500/40 focus:border-indigo-500'
@@ -288,15 +495,8 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
                   />
                 </div>
 
-                {/* Email Format Warning Checker */}
-                {showEmailFormatError && (
-                  <p className="text-[11px] font-semibold text-amber-500 flex items-center gap-1 pt-0.5">
-                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                    <span>Please enter a valid email format (e.g., name@example.com)</span>
-                  </p>
-                )}
                 <p className={`text-[11px] font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                  Enter either your registered public tag (e.g., <strong>Dylen #1001</strong>) or your account email address.
+                  Accepts <strong>Dylen #1001</strong>, <strong>Dylen#1001</strong>, <strong>Dylen 1001</strong>, <strong>Dylen</strong>, or registered <strong>Email</strong>.
                 </p>
               </div>
 
@@ -366,7 +566,7 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
                   isSubmitting ||
                   !identifier.trim() ||
                   pin.trim().length !== 4 ||
-                  (isEmailInput && !isEmailValid)
+                  (validationFeedback?.status === 'warning')
                 }
                 className="w-full py-3.5 px-6 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
               >

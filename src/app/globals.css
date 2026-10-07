@@ -188,3 +188,47 @@
 .animate-slideInRight {
   animation: slideInRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Smooth Fade In */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Smooth Fade In and Up for Form Fields after Loading */
+@keyframes smoothFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-smoothFadeUp {
+  animation: smoothFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle Shimmer Pulse for Loading Skeletons */
+@keyframes pulseSubtle {
+  0%, 100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.animate-pulseSubtle {
+  animation: pulseSubtle 1.6s ease-in-out infinite;
+}
