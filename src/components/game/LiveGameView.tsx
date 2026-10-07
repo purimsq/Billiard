@@ -970,7 +970,7 @@ export function LiveGameView({
 
           {/* Floating Undo (<) and Redo (>) tactile buttons placed in workspace right below Target */}
           <div
-            className={`absolute right-0 top-1/2 -translate-y-1/2 flex items-center p-0.5 sm:p-1 rounded-2xl border shadow-sm backdrop-blur-md transition-all z-10 ${
+            className={`absolute right-0 top-0.5 sm:top-1 flex items-center p-0.5 sm:p-1 rounded-2xl border shadow-sm backdrop-blur-md transition-all z-10 ${
               isDark
                 ? 'bg-zinc-800/90 border-zinc-700/80 shadow-black/40'
                 : 'bg-white/95 border-zinc-200/90 shadow-zinc-200/60'
