@@ -172,3 +172,19 @@
 .animate-qrLaser {
   animation: qrLaserSweep 3.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
+
+/* Page Navigation: Smooth Slide-in from Right (Swiping to Left feel) */
+@keyframes slideInRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

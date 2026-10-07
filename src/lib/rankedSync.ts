@@ -463,6 +463,129 @@ export async function registerPlayerProfile(
   return profile;
 }
 
+/**
+ * Restores an existing cloud profile onto this device using Player Tag (or Email) and 4-digit PIN.
+ * Provides safe, non-revealing credential validation feedback.
+ */
+export async function restorePlayerProfile(
+  identifier: string,
+  enteredPin: string
+): Promise<{ success: boolean; profile?: RankedPlayerProfile; error?: string }> {
+  const cleanId = identifier.trim();
+  const cleanPin = enteredPin.trim();
+
+  if (!cleanId) {
+    return { success: false, error: 'Please enter your Player Tag or Email address' };
+  }
+  if (!cleanPin || cleanPin.length !== 4) {
+    return { success: false, error: 'Please enter your 4-digit Security PIN' };
+  }
+
+  // Safe standard security feedback message
+  const GENERIC_ERROR = 'Invalid credentials. Please verify your Player Tag or Email and 4-digit PIN.';
+
+  try {
+    const playersRef = collection(db, 'players');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let matchedDoc: any = null;
+
+    // A. Check if identifier is an email address
+    if (cleanId.includes('@')) {
+      const emailLower = cleanId.toLowerCase();
+      const qEmail = query(playersRef, where('email', '==', emailLower), limit(2));
+      const snap = await getDocs(qEmail);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } 
+    // B. Check if identifier contains a tag (e.g. Dylen #1001 or dylen#1001)
+    else if (cleanId.includes('#')) {
+      const parts = cleanId.split('#');
+      const u = parts[0].trim().toLowerCase();
+      const d = parts[1].trim().padStart(4, '0');
+      const qTag = query(playersRef, where('username_lower', '==', u), where('discriminator', '==', d), limit(1));
+      const snap = await getDocs(qTag);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } 
+    // C. Check if identifier is just username (e.g. Dylen)
+    else {
+      const u = cleanId.toLowerCase();
+      const qUser = query(playersRef, where('username_lower', '==', u), limit(10));
+      const snap = await getDocs(qUser);
+      if (!snap.empty) {
+        for (const docSnap of snap.docs) {
+          const docData = docSnap.data();
+          if (docData.pin && docData.pin.trim() === cleanPin) {
+            matchedDoc = docSnap;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!matchedDoc) {
+      return { success: false, error: GENERIC_ERROR };
+    }
+
+    const data = matchedDoc.data() as RankedPlayerProfile;
+    // Verify PIN strictly
+    if (!data.pin || data.pin.trim() !== cleanPin) {
+      return { success: false, error: GENERIC_ERROR };
+    }
+
+    // Reconstruct full profile and competitor identity
+    const comp = formatCompetitorIdentity(data);
+    const tag = comp.formattedTag;
+    const uid = matchedDoc.id || data.id;
+
+    // Restore QR code data representation
+    const qrData = data.qrData || JSON.stringify({
+      app: 'billiard',
+      type: 'player_profile',
+      id: uid,
+      tag,
+      username: comp.username,
+      discriminator: comp.discriminator,
+      email: data.email || '',
+      createdAt: data.createdAt || Date.now(),
+    });
+
+    const restoredProfile: RankedPlayerProfile = {
+      ...data,
+      id: uid,
+      username: comp.username,
+      discriminator: comp.discriminator,
+      tag,
+      name: tag,
+      email: data.email || '',
+      color: data.color || '#6366F1',
+      avatarBg: data.avatarBg || data.color || '#6366F1',
+      rating: typeof data.rating === 'number' ? data.rating : 100,
+      totalMatches: data.totalMatches || 0,
+      wins: data.wins || 0,
+      losses: data.losses || 0,
+      draws: data.draws || 0,
+      totalPoints: data.totalPoints || 0,
+      highestBreak: data.highestBreak || 0,
+      qrData,
+      updatedAt: Date.now(),
+    };
+
+    // Save restored profile to local storage so device is immediately authenticated
+    saveLocalDeviceProfile(restoredProfile);
+
+    return { success: true, profile: restoredProfile };
+  } catch (err) {
+    console.warn('[RankedSync] Failed to restore profile:', err);
+    return {
+      success: false,
+      error: 'Unable to connect to the arena database. Please check your internet connection.',
+    };
+  }
+}
+
 // 2. Search Ranked Players in Database
 export const SMART_FREQUENT_COMPETITORS_KEY = 'billiard_smart_frequent_competitors_v1';
 

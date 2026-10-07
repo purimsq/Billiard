@@ -29,6 +29,7 @@ interface OnlineIdentitySetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (profile: RankedPlayerProfile) => void;
+  onOpenRestore?: () => void;
   isDark: boolean;
 }
 
@@ -45,6 +46,7 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
   isOpen,
   onClose,
   onComplete,
+  onOpenRestore,
   isDark,
 }) => {
   // Step state (1 through 6)
@@ -831,6 +833,24 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
                   )}
                 </div>
               </div>
+
+              {/* Option to Restore / Sign In */}
+              {onOpenRestore && (
+                <div className="pt-2 text-center border-t border-zinc-200/60 dark:border-zinc-800/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenRestore();
+                    }}
+                    className={`text-xs font-bold transition hover:underline underline-offset-4 ${
+                      isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'
+                    }`}
+                  >
+                    Already registered? Restore existing profile →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

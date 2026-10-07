@@ -22,6 +22,7 @@ import {
   Volume2,
   VolumeX,
   ChevronRight,
+  LogIn,
 } from 'lucide-react';
 import { AppSettings } from '@/types/settings';
 import {
@@ -30,6 +31,7 @@ import {
   getVerifiedRoster,
 } from '@/lib/rankedSync';
 import { OnlineIdentitySetupModal } from '@/components/profile/OnlineIdentitySetupModal';
+import { RestoreIdentityPage } from '@/components/profile/RestoreIdentityPage';
 import { PlayerQrCodeModal } from '@/components/profile/PlayerQrCodeModal';
 import { CompetitorProfileCard } from '@/components/profile/CompetitorProfileCard';
 import {
@@ -263,6 +265,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isRosterOpen, setIsRosterOpen] = useState<boolean>(false);
   const [deviceProfile, setDeviceProfile] = useState<RankedPlayerProfile | null>(() => getLocalDeviceProfile());
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
+  const [isRestorePageOpen, setIsRestorePageOpen] = useState<boolean>(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isInitiatingRanked, setIsInitiatingRanked] = useState<boolean>(false);
 
@@ -407,43 +410,62 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (network.hasInternet && !isInitiatingRanked) {
-                    setIsInitiatingRanked(true);
-                    setTimeout(() => {
-                      setIsInitiatingRanked(false);
-                      setIsSetupModalOpen(true);
-                    }, 1200);
-                  }
-                }}
-                disabled={!network.hasInternet || isInitiatingRanked}
-                className={`py-3 px-5 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all flex-shrink-0 shadow-md ${
-                  isInitiatingRanked
-                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/50 animate-pulse cursor-wait'
-                    : network.hasInternet
-                    ? 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-indigo-600/30 cursor-pointer'
-                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50 border border-zinc-700/60'
-                }`}
-              >
-                {isInitiatingRanked ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Connecting Server...</span>
-                  </>
-                ) : network.hasInternet ? (
-                  <>
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Join Ranked</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-4 h-4" />
-                    <span>Offline</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (network.hasInternet && !isInitiatingRanked) {
+                      setIsInitiatingRanked(true);
+                      setTimeout(() => {
+                        setIsInitiatingRanked(false);
+                        setIsSetupModalOpen(true);
+                      }, 1200);
+                    }
+                  }}
+                  disabled={!network.hasInternet || isInitiatingRanked}
+                  className={`py-3 px-5 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md ${
+                    isInitiatingRanked
+                      ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/50 animate-pulse cursor-wait'
+                      : network.hasInternet
+                      ? 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-indigo-600/30 cursor-pointer'
+                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50 border border-zinc-700/60'
+                  }`}
+                >
+                  {isInitiatingRanked ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Connecting Server...</span>
+                    </>
+                  ) : network.hasInternet ? (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Join Ranked</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-4 h-4" />
+                      <span>Offline</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsRestorePageOpen(true)}
+                  disabled={!network.hasInternet}
+                  className={`py-3 px-4 rounded-2xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all border active:scale-95 ${
+                    !network.hasInternet
+                      ? 'border-zinc-800 text-zinc-600 cursor-not-allowed opacity-50'
+                      : isDark
+                      ? 'border-indigo-500/40 hover:border-indigo-400 hover:bg-indigo-950/40 text-indigo-300 cursor-pointer'
+                      : 'border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 cursor-pointer'
+                  }`}
+                  title="Restore an existing player identity with Tag/Email & PIN"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Restore Profile</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -1552,10 +1574,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <OnlineIdentitySetupModal
           isOpen={isSetupModalOpen}
           onClose={() => setIsSetupModalOpen(false)}
+          onOpenRestore={() => {
+            setIsSetupModalOpen(false);
+            setIsRestorePageOpen(true);
+          }}
           onComplete={(newProfile) => {
             setDeviceProfile(newProfile);
             setToastMessage(`Ranked Identity Activated: ${newProfile.tag}`);
             setTimeout(() => setToastMessage(null), 3500);
+          }}
+          isDark={isDark}
+        />
+      )}
+
+      {/* Full-Page Account Restore Screen */}
+      {isRestorePageOpen && (
+        <RestoreIdentityPage
+          isOpen={isRestorePageOpen}
+          onBack={() => setIsRestorePageOpen(false)}
+          onComplete={(profile) => {
+            setDeviceProfile(profile);
+            setIsRestorePageOpen(false);
+            setToastMessage(`Welcome back! Identity Restored: ${profile.tag}`);
+            setTimeout(() => setToastMessage(null), 4000);
           }}
           isDark={isDark}
         />
