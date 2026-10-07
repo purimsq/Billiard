@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { RotateCcw, RotateCw, Flag, Plus, Minus, Check, Settings, Flame, Ban, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, Plus, Minus, Check, Settings, Flame, Ban, X } from 'lucide-react';
 import { GameSession } from '@/types/game';
 import { AppSettings } from '@/types/settings';
 import { BALL_DEFINITIONS } from '@/lib/gameLogic';
@@ -495,49 +495,20 @@ export function LiveGameView({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <button
-              type="button"
-              onClick={handleUndo}
-              disabled={session.history.length === 0}
-              title="Undo last score action"
-              className={`px-2 sm:px-2.5 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-35 disabled:pointer-events-none shadow-sm transition active:scale-95 ${
-                isDark
-                  ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
-                  : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-              }`}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Undo</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRedo}
-              disabled={!session.redoHistory || session.redoHistory.length === 0}
-              title="Redo undone score action"
-              className={`px-2 sm:px-2.5 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-35 disabled:pointer-events-none shadow-sm transition active:scale-95 ${
-                isDark
-                  ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
-                  : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-              }`}
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Redo</span>
-            </button>
-
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {onOpenSettings && (
               <button
+                type="button"
                 onClick={onOpenSettings}
                 title="Settings"
                 aria-label="Settings"
-                className={`p-1.5 rounded-full border shadow-sm transition active:scale-90 ${
+                className={`p-1.5 sm:p-2 rounded-full border shadow-sm transition active:scale-90 ${
                   isDark
                     ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
                     : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
                 }`}
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -553,13 +524,14 @@ export function LiveGameView({
                 }`}
               >
                 <Ban className="w-3.5 h-3.5 text-rose-500" />
-                <span>Cancel</span>
+                <span className="hidden xs:inline">Cancel</span>
               </button>
             )}
 
             <button
+              type="button"
               onClick={onEndGame}
-              className="px-2.5 sm:px-3 py-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1 hover:bg-rose-700 shadow-sm transition active:scale-95"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1 hover:bg-rose-700 shadow-sm transition active:scale-95"
             >
               <Flag className="w-3.5 h-3.5" />
               <span>End<span className="hidden sm:inline"> Game</span></span>
@@ -943,7 +915,7 @@ export function LiveGameView({
         </div>
 
         {/* score input — type a number or use the ball picker */}
-        <div className="flex-1 flex flex-col items-center justify-center py-2 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center py-2 text-center relative">
           <span
             className={`text-[10px] font-extrabold uppercase tracking-widest block mb-0.5 ${
               isDark ? 'text-zinc-500' : 'text-zinc-400'
@@ -994,6 +966,47 @@ export function LiveGameView({
             >
               PTS
             </span>
+          </div>
+
+          {/* Floating Undo (<) and Redo (>) tactile buttons placed in workspace right below Target */}
+          <div
+            className={`absolute right-0 top-1/2 -translate-y-1/2 flex items-center p-0.5 sm:p-1 rounded-2xl border shadow-sm backdrop-blur-md transition-all z-10 ${
+              isDark
+                ? 'bg-zinc-800/90 border-zinc-700/80 shadow-black/40'
+                : 'bg-white/95 border-zinc-200/90 shadow-zinc-200/60'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={session.history.length === 0}
+              title="Undo score action (<)"
+              aria-label="Undo score action"
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition active:scale-90 disabled:opacity-20 disabled:pointer-events-none ${
+                isDark
+                  ? 'text-zinc-200 hover:bg-zinc-700/80 hover:text-white'
+                  : 'text-zinc-700 hover:bg-zinc-100 hover:text-black'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+            </button>
+
+            <div className={`w-[1px] h-4 mx-0.5 ${isDark ? 'bg-zinc-700/80' : 'bg-zinc-200'}`} />
+
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={!session.redoHistory || session.redoHistory.length === 0}
+              title="Redo score action (>)"
+              aria-label="Redo score action"
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition active:scale-90 disabled:opacity-20 disabled:pointer-events-none ${
+                isDark
+                  ? 'text-zinc-200 hover:bg-zinc-700/80 hover:text-white'
+                  : 'text-zinc-700 hover:bg-zinc-100 hover:text-black'
+              }`}
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+            </button>
           </div>
         </div>
 
