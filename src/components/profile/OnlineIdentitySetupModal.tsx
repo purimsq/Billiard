@@ -29,6 +29,7 @@ import {
   subscribeNetworkHealth,
   getNetworkHealthSnapshot,
 } from '@/lib/networkReachability';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface OnlineIdentitySetupModalProps {
   isOpen: boolean;
@@ -243,6 +244,15 @@ export const OnlineIdentitySetupModal: React.FC<OnlineIdentitySetupModalProps> =
     setConfirmError(false);
     onClose();
   };
+
+  // Mobile hardware/gesture back support (steps back or closes modal)
+  useBackHandler('modal:online-identity', isOpen, () => {
+    if (step > 1 && !createdProfile) {
+      setStep((s) => (s - 1) as 1 | 2 | 3 | 4 | 5 | 6);
+    } else {
+      handleModalClose();
+    }
+  });
 
   const handleDismiss = () => {
     if (createdProfile) {

@@ -19,6 +19,7 @@ import {
 } from '@/lib/storage';
 import { MatchDetailsPage } from './MatchDetailsPage';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface GameHistoryPageProps {
   onBack: () => void;
@@ -32,6 +33,10 @@ export const GameHistoryPage: React.FC<GameHistoryPageProps> = ({ onBack, isDark
   });
   const [activeTab, setActiveTab] = useState<'casual' | 'ranked'>('casual');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+
+  // Mobile hardware/gesture back support for viewing a match's details
+  useBackHandler('history:match-details', Boolean(selectedGameId), () => setSelectedGameId(null));
+
   const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
   const [matchToDelete, setMatchToDelete] = useState<GameSession | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -42,6 +47,9 @@ export const GameHistoryPage: React.FC<GameHistoryPageProps> = ({ onBack, isDark
     return getCasualHistoryLimit();
   });
   const [isLimitDropdownOpen, setIsLimitDropdownOpen] = useState<boolean>(false);
+
+  // Mobile hardware/gesture back support for retention dropdown
+  useBackHandler('history:limit-dropdown', isLimitDropdownOpen, () => setIsLimitDropdownOpen(false));
   const [isLimitModalOpen, setIsLimitModalOpen] = useState<boolean>(false);
   const [targetLimit, setTargetLimit] = useState<number>(20);
   const [hasAcknowledgedStorage, setHasAcknowledgedStorage] = useState<boolean>(false);

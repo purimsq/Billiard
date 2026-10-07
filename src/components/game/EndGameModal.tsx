@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { Zap, HardDrive, ShieldCheck } from 'lucide-react';
 import { GameSession } from '@/types/game';
 import { getCasualHistoryLimit } from '@/lib/storage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface EndGameModalProps {
   session: GameSession;
@@ -23,6 +24,8 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   isDark = false,
   syncStatus,
 }) => {
+  // Mobile hardware/gesture back support - completing match returns to home
+  useBackHandler('modal:end-game', isOpen, onDone);
   useEffect(() => {
     if (isOpen) {
       try {

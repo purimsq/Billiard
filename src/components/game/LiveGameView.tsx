@@ -8,6 +8,7 @@ import { AdvancedFlameBorder } from '../ui/AdvancedFlameBorder';
 import { UnderworldAlertModal, UnderworldAlertData } from './UnderworldAlertModal';
 import { requestScreenWakeLock, releaseScreenWakeLock, isStandaloneMode } from '@/lib/wakeLockManager';
 import { playCardBreakSound, playCardRepairSound } from '@/lib/underworldAudio';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface LiveGameViewProps {
   session: GameSession;
@@ -62,6 +63,10 @@ export function LiveGameView({
 
   // Underworld / Point of No Return alert state
   const [underworldAlert, setUnderworldAlert] = useState<UnderworldAlertData | null>(null);
+
+  // Mobile hardware/gesture back support for in-game drawers and alerts
+  useBackHandler('live:balls-drawer', isBallsDrawerOpen, () => setIsBallsDrawerOpen(false));
+  useBackHandler('live:underworld-alert', Boolean(underworldAlert), () => setUnderworldAlert(null));
 
   // Track player IDs that have fallen <= -50 during this session
   const deadPlayerIdsEver = useRef<Set<string>>(

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Trash2, AlertTriangle, Info, X } from 'lucide-react';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -24,6 +25,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'danger',
   isDark = false,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:confirmation', isOpen, onClose);
+
   // Close on Escape key press
   useEffect(() => {
     if (!isOpen) return;

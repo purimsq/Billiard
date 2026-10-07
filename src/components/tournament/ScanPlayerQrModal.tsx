@@ -9,6 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import jsQR from 'jsqr';
+import { useBackHandler } from '@/lib/backNavigation';
 
 export interface ScannedPlayerPayload {
   username?: string;
@@ -32,6 +33,9 @@ export const ScanPlayerQrModal: React.FC<ScanPlayerQrModalProps> = ({
   onPlayerScanned,
   isDark = false,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:scan-qr', isOpen, onClose);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);

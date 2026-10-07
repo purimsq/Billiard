@@ -25,6 +25,7 @@ import {
   getNetworkHealthSnapshot,
   checkRealInternetConnectivity,
 } from '@/lib/networkReachability';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface RestoreIdentityPageProps {
   isOpen: boolean;
@@ -39,6 +40,9 @@ export const RestoreIdentityPage: React.FC<RestoreIdentityPageProps> = ({
   onComplete,
   isDark,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:restore-identity', isOpen, onBack);
+
   const network = useSyncExternalStore(
     subscribeNetworkHealth,
     getNetworkHealthSnapshot,

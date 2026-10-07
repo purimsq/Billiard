@@ -37,6 +37,7 @@ import {
 import { PlayerQrCodeModal } from '@/components/profile/PlayerQrCodeModal';
 import { ScanPlayerQrModal, ScannedPlayerPayload } from './ScanPlayerQrModal';
 import { CompetitorProfileView } from './CompetitorProfileView';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface TournamentTablePageProps {
   onBack: () => void;
@@ -69,6 +70,10 @@ export const TournamentTablePage: React.FC<TournamentTablePageProps> = ({
   });
   const [selectedPlayer, setSelectedPlayer] = useState<PublicLeaderboardPlayer | null>(null);
   const [menuPlayer, setMenuPlayer] = useState<PublicLeaderboardPlayer | null>(null);
+
+  // Mobile hardware/gesture back support for nested profile card and context action menu
+  useBackHandler('tournament:selected-player', Boolean(selectedPlayer), () => setSelectedPlayer(null));
+  useBackHandler('tournament:menu-player', Boolean(menuPlayer), () => setMenuPlayer(null));
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     const cached = getCachedLeaderboard();
     return cached.length === 0 && network.hasInternet;

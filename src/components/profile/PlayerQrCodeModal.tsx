@@ -11,6 +11,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { RankedPlayerProfile } from '@/lib/rankedSync';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface PlayerQrCodeModalProps {
   isOpen: boolean;
@@ -25,6 +26,9 @@ export const PlayerQrCodeModal: React.FC<PlayerQrCodeModalProps> = ({
   profile,
   isDark,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:player-qr', isOpen, onClose);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [shared, setShared] = useState<boolean>(false);

@@ -24,6 +24,7 @@ import {
   syncRosterMemberEmails,
 } from '@/lib/rankedSync';
 import { CompetitorProfileView } from '@/components/tournament/CompetitorProfileView';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CompetitorRosterPageProps {
   onBack: () => void;
@@ -40,6 +41,9 @@ export const CompetitorRosterPage: React.FC<CompetitorRosterPageProps> = ({
   });
 
   const [selectedPlayer, setSelectedPlayer] = useState<PublicLeaderboardPlayer | null>(null);
+
+  // Mobile hardware/gesture back support for nested player profile
+  useBackHandler('roster:selected-player', Boolean(selectedPlayer), () => setSelectedPlayer(null));
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<PublicLeaderboardPlayer[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);

@@ -13,19 +13,21 @@ export interface UpdateChangelogItem {
 }
 
 export const BASE_APP_VERSION = '1.5.0';
-export const BUILD_DATE = 'October 7, 2026';
+export const BUILD_DATE = 'October 8, 2026';
+export const CURRENT_BUILD_REVISION = '20261008-01';
 
 export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
   {
     version: 'v1.5.0',
-    date: 'October 7, 2026',
+    date: 'October 8, 2026',
     highlights: [
+      'Mobile Hardware & Gesture Back Navigation: Native Android back button and swipe-from-edge gesture support with hierarchical stack navigation across all views, modals, and confirmations',
       'Tournament Standings: Streamlined responsive card with sticky header, smooth internal roster scrolling, and direct email badges',
       'Competitor Email Integration: Full email display & dual search filtering across Tournament Standings, Competitor Roster, Match Setup, and Digital QR Pass',
       'Automatic Roster Email Backfill: Instant background synchronization linking registered competitor emails to offline rosters',
       'Offline Ranked Auto-Sync Engine: Automated queue flushing on internet restoration with duplicate-push prevention and in-progress match locking',
       'Enhanced Match UI: Clean live match scoring cards with responsive floating Undo/Redo action controls',
-      'Service Worker v9: Instant background update detection and automated cache refresh',
+      'Service Worker v10: Instant background update detection and automated cache refresh',
     ],
   },
   {
@@ -107,6 +109,25 @@ export const RECENT_CHANGELOG: UpdateChangelogItem[] = [
 const APPLIED_UPDATE_KEY = 'billiard_just_updated_version';
 const LAST_CHECKED_KEY = 'billiard_last_update_check';
 const INSTALLED_VERSION_KEY = 'billiard_installed_version';
+const INSTALLED_BUILD_REVISION_KEY = 'billiard_installed_build_revision';
+
+export function getInstalledBuildRevision(): string {
+  if (typeof window === 'undefined') return CURRENT_BUILD_REVISION;
+  try {
+    return localStorage.getItem(INSTALLED_BUILD_REVISION_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setInstalledBuildRevision(revision: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(INSTALLED_BUILD_REVISION_KEY, revision);
+  } catch {
+    // Ignore
+  }
+}
 
 export function getInstalledVersion(): string {
   if (typeof window === 'undefined') return BASE_APP_VERSION;
@@ -145,11 +166,14 @@ export function clearRecentlyAppliedVersion(): void {
   }
 }
 
-export function markUpdateAsPendingApplication(version: string): void {
+export function markUpdateAsPendingApplication(version: string, revision?: string): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(APPLIED_UPDATE_KEY, version);
     localStorage.setItem(INSTALLED_VERSION_KEY, version);
+    if (revision) {
+      localStorage.setItem(INSTALLED_BUILD_REVISION_KEY, revision);
+    }
   } catch {
     // Ignore
   }
@@ -315,6 +339,7 @@ export async function runCheckForUpdates(options?: {
 
   // Step 3: Fetch remote version manifest from server with cache busting
   let remoteVersion = getInstalledVersion();
+  let remoteRevision = '';
   try {
     const res = await fetch(`/version.json?_t=${Date.now()}`, {
       cache: 'no-store',
@@ -325,16 +350,21 @@ export async function runCheckForUpdates(options?: {
       if (data && data.version) {
         remoteVersion = data.version.replace(/^v/, '');
       }
+      if (data && data.buildRevision) {
+        remoteRevision = data.buildRevision;
+      }
     }
   } catch {
     // If version.json fetch fails, rely on SW check
   }
 
   const currentClean = getInstalledVersion().replace(/^v/, '');
+  const currentRevision = getInstalledBuildRevision();
 
   // Determine if there is a real update
   const hasVersionDiff = remoteVersion !== currentClean;
-  const isUpdateAvailable = hasVersionDiff || hasPendingSw || forceSimulateNewVersion;
+  const hasRevisionDiff = Boolean(remoteRevision && currentRevision && remoteRevision !== currentRevision);
+  const isUpdateAvailable = hasVersionDiff || hasRevisionDiff || hasPendingSw || forceSimulateNewVersion;
 
   if (!isUpdateAvailable) {
     // NO UPDATE: Genuine report. Do not download phantom updates!
@@ -410,7 +440,7 @@ export async function runCheckForUpdates(options?: {
 export function applySystemUpdate(): void {
   const versionToApply = currentState.availableVersion || `v${BASE_APP_VERSION}`;
   updateState({ isRefreshing: true });
-  markUpdateAsPendingApplication(versionToApply);
+  markUpdateAsPendingApplication(versionToApply, CURRENT_BUILD_REVISION);
 
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistration().then((reg) => {

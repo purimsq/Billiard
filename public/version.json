@@ -1,13 +1,15 @@
 {
   "version": "1.5.0",
-  "buildDate": "October 7, 2026",
+  "buildDate": "October 8, 2026",
+  "buildRevision": "20261008-01",
   "minSupportedVersion": "1.0.0",
   "changelog": [
+    "Mobile Hardware & Gesture Back Navigation: Native Android back button and swipe-from-edge gesture support with hierarchical stack navigation across all views, modals, and confirmations",
     "Tournament Standings: Streamlined responsive card with sticky header, smooth internal roster scrolling, and direct email badges",
     "Competitor Email Integration: Full email display & dual search filtering across Tournament Standings, Competitor Roster, Match Setup, and Digital QR Pass",
     "Automatic Roster Email Backfill: Instant background synchronization linking registered competitor emails to offline rosters",
     "Offline Ranked Auto-Sync Engine: Automated queue flushing on internet restoration with duplicate-push prevention and in-progress match locking",
     "Enhanced Match UI: Clean live match scoring cards with responsive floating Undo/Redo action controls",
-    "Service Worker v9: Instant background update detection and automated cache refresh"
+    "Service Worker v10: Instant background update detection and automated cache refresh"
   ]
 }

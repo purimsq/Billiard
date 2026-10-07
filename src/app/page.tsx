@@ -28,6 +28,7 @@ import {
 } from '@/lib/rankedSync';
 import { RankedSyncProgressModal } from '@/components/game/RankedSyncProgressModal';
 import { MatchEloResult } from '@/lib/smartElo';
+import { useBackHandler } from '@/lib/backNavigation';
 
 const emptySubscribe = () => () => {};
 
@@ -140,6 +141,12 @@ export default function Home() {
   const handleOpenTournamentTable = () => {
     setCurrentView('tournament');
   };
+
+  // Mobile hardware/gesture back support across all primary app views
+  useBackHandler('view:settings', currentView === 'settings', handleBackFromSettings);
+  useBackHandler('view:history', currentView === 'history', handleBackFromHistory);
+  useBackHandler('view:tournament', currentView === 'tournament', () => setCurrentView('home'));
+  useBackHandler('view:live', currentView === 'live', () => setCurrentView('home'));
 
   // loading overlay state
   const [loadingVariant, setLoadingVariant] = useState<LoadingVariant>('quick');

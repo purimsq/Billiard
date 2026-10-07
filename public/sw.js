@@ -1,4 +1,4 @@
-const CACHE_NAME = 'billiard-pwa-v9';
+const CACHE_NAME = 'billiard-pwa-v10';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',

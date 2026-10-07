@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Ban, AlertTriangle, X, ShieldAlert, Users } from 'lucide-react';
 import { GameSession } from '@/types/game';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CancelGameModalProps {
   isOpen: boolean;
@@ -17,6 +18,9 @@ export const CancelGameModal: React.FC<CancelGameModalProps> = ({
   onConfirmCancel,
   isDark = false,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:cancel-game', isOpen, onClose);
+
   // Close on Escape key press
   useEffect(() => {
     if (!isOpen) return;

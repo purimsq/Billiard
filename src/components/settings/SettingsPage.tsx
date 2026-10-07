@@ -60,6 +60,7 @@ import {
 } from '@/lib/systemUpdateManager';
 import { GameHistoryPage } from './GameHistoryPage';
 import { CompetitorRosterPage } from './CompetitorRosterPage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -168,6 +169,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   );
 
   const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
+  useBackHandler('settings:changelog', isChangelogOpen, () => setIsChangelogOpen(false));
   const [activeInstallTab, setActiveInstallTab] = useState<'ios' | 'android'>(() =>
     detectPlatform() === 'android' ? 'android' : 'ios'
   );
@@ -267,6 +269,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const isDark = settings.darkMode;
   const [internalHistoryOpen, setInternalHistoryOpen] = useState<boolean>(false);
   const [isRosterOpen, setIsRosterOpen] = useState<boolean>(false);
+
+  // Mobile hardware/gesture back support for nested settings screens
+  useBackHandler('settings:internal-history', internalHistoryOpen, () => setInternalHistoryOpen(false));
+  useBackHandler('settings:roster', isRosterOpen, () => setIsRosterOpen(false));
   const [deviceProfile, setDeviceProfile] = useState<RankedPlayerProfile | null>(() => getLocalDeviceProfile());
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isRestorePageOpen, setIsRestorePageOpen] = useState<boolean>(false);

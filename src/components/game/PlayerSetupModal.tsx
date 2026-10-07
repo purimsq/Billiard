@@ -29,6 +29,7 @@ import {
   getNetworkHealthSnapshot,
 } from '@/lib/networkReachability';
 import { ScanPlayerQrModal, ScannedPlayerPayload } from '@/components/tournament/ScanPlayerQrModal';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface PlayerSetupModalProps {
   isOpen: boolean;
@@ -48,6 +49,9 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
   onStartGame,
   isDark = false,
 }) => {
+  // Mobile hardware/gesture back support
+  useBackHandler('modal:player-setup', isOpen, onClose);
+
   const [selectedMode, setSelectedMode] = useState<GameMode>('casual');
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +75,9 @@ export const PlayerSetupModal: React.FC<PlayerSetupModalProps> = ({
     player: Player;
     index: number;
   } | null>(null);
+
+  // Mobile hardware/gesture back support for removing competitor prompt
+  useBackHandler('setup:remove-competitor', Boolean(competitorToRemove), () => setCompetitorToRemove(null));
   const [pressingOpponentId, setPressingOpponentId] = useState<string | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
