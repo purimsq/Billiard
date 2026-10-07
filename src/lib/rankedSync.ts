@@ -971,12 +971,24 @@ export interface SubmitRankedMatchResult {
   error?: unknown;
 }
 
+// Tracks match session IDs currently in-flight to prevent concurrent duplicate submissions
+const inFlightSessionSyncs = new Set<string>();
+
+// Global mutex to prevent overlapping offline queue flushes across the app
+let isQueueFlushActive = false;
+
 // 4. Submit Ranked Match to Firestore & Update Player Ratings via Smart ELO Engine
 export async function submitRankedMatch(
   session: GameSession,
   onProgress?: (update: RankedSyncProgressUpdate) => void
 ): Promise<SubmitRankedMatchResult> {
   if (session.mode !== 'ranked') {
+    return { success: true, offlineQueued: false };
+  }
+
+  // Prevent duplicate concurrent submission if this exact match is already actively uploading
+  if (inFlightSessionSyncs.has(session.id)) {
+    console.warn(`[RankedSync] Match ${session.id} is already in-flight. Skipping duplicate submission.`);
     return { success: true, offlineQueued: false };
   }
 
@@ -987,23 +999,23 @@ export async function submitRankedMatch(
     detail: 'Retrieving latest player ratings & records...',
   });
 
-  // A. Gather competitor profile context for each participant
-  const local = getLocalDeviceProfile();
-  const roster = getVerifiedRoster();
-  const profilesMap: Record<string, Partial<RankedPlayerProfile | PublicLeaderboardPlayer>> = {};
+    // A. Gather competitor profile context for each participant
+    const local = getLocalDeviceProfile();
+    const roster = getVerifiedRoster();
+    const profilesMap: Record<string, Partial<RankedPlayerProfile | PublicLeaderboardPlayer>> = {};
 
-  for (const p of session.players) {
-    const comp = formatCompetitorIdentity(p);
-    let found: Partial<RankedPlayerProfile | PublicLeaderboardPlayer> | null = null;
+    for (const p of session.players) {
+      const comp = formatCompetitorIdentity(p);
+      let found: Partial<RankedPlayerProfile | PublicLeaderboardPlayer> | null = null;
 
-    if (
-      local &&
-      (local.id === p.id ||
-        (local.username.toLowerCase() === comp.username.toLowerCase() &&
-          local.discriminator === comp.discriminator))
-    ) {
-      found = local;
-    }
+      if (
+        local &&
+        (local.id === p.id ||
+          (local.username.toLowerCase() === comp.username.toLowerCase() &&
+            local.discriminator === comp.discriminator))
+      ) {
+        found = local;
+      }
 
     if (!found) {
       const matchRoster = roster.find((cand) => {
@@ -1086,6 +1098,7 @@ export async function submitRankedMatch(
     endedAt: Date.now(),
   };
 
+  inFlightSessionSyncs.add(session.id);
   try {
     onProgress?.({
       stage: 'connecting',
@@ -1230,6 +1243,8 @@ export async function submitRankedMatch(
       detail: 'Match stored safely on device — will auto-sync to tournament server once connected.',
     });
     return { success: true, offlineQueued: true, eloResult, error: err };
+  } finally {
+    inFlightSessionSyncs.delete(session.id);
   }
 }
 
@@ -1403,6 +1418,10 @@ export function removePendingRankedSync(sessionId: string): void {
 
 export async function flushPendingRankedSync(): Promise<number> {
   if (typeof window === 'undefined') return 0;
+  if (isQueueFlushActive) {
+    return 0;
+  }
+  isQueueFlushActive = true;
   try {
     const raw = localStorage.getItem(PENDING_SYNC_KEY);
     if (!raw) return 0;
@@ -1412,6 +1431,11 @@ export async function flushPendingRankedSync(): Promise<number> {
     let syncedCount = 0;
 
     for (const session of queue) {
+      // If this session is already actively being pushed in another context (e.g. the end-match progress modal), skip it
+      if (inFlightSessionSyncs.has(session.id)) {
+        continue;
+      }
+
       const res = await submitRankedMatch(session);
       if (res.success && !res.offlineQueued) {
         syncedCount++;
@@ -1430,6 +1454,8 @@ export async function flushPendingRankedSync(): Promise<number> {
   } catch (err) {
     console.error('Failed to flush pending ranked sync:', err);
     return 0;
+  } finally {
+    isQueueFlushActive = false;
   }
 }
 
@@ -1454,17 +1480,14 @@ export function startOfflineRankedSyncListener(
 ): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  let isFlushing = false;
-
   const checkAndFlush = async () => {
-    if (isFlushing) return;
+    if (isQueueFlushActive) return;
     try {
       const count = getPendingRankedSyncCount();
       if (count === 0) return;
 
       const health = await checkRealInternetConnectivity();
       if (health.hasInternet) {
-        isFlushing = true;
         const synced = await flushPendingRankedSync();
         if (synced > 0 && onSyncSuccess) {
           onSyncSuccess(synced);
@@ -1472,8 +1495,6 @@ export function startOfflineRankedSyncListener(
       }
     } catch (e) {
       console.warn('[RankedSync] Background flush check failed:', e);
-    } finally {
-      isFlushing = false;
     }
   };
 
