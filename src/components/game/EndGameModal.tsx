@@ -9,6 +9,7 @@ interface EndGameModalProps {
   isOpen: boolean;
   onDone: () => void;
   onNewGame: () => void;
+  onCancelGame?: () => void;
   isDark?: boolean;
 }
 
@@ -17,6 +18,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   isOpen,
   onDone,
   onNewGame,
+  onCancelGame,
   isDark = false,
 }) => {
   useEffect(() => {
@@ -308,6 +310,22 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
             DONE
           </button>
         </div>
+
+        {onCancelGame && (
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={onCancelGame}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition ${
+                isDark
+                  ? 'text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/30'
+                  : 'text-rose-600/80 hover:text-rose-700 hover:bg-rose-50'
+              }`}
+            >
+              Cancel &amp; discard match without saving
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

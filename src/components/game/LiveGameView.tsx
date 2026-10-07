@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { RotateCcw, Flag, Plus, Minus, Check, Settings, Flame } from 'lucide-react';
+import { RotateCcw, Flag, Plus, Minus, Check, Settings, Flame, Ban } from 'lucide-react';
 import { GameSession } from '@/types/game';
 import { AppSettings } from '@/types/settings';
 import { BALL_DEFINITIONS } from '@/lib/gameLogic';
@@ -14,6 +14,7 @@ interface LiveGameViewProps {
   settings?: AppSettings;
   onUpdateSession: (session: GameSession) => void;
   onEndGame: () => void;
+  onCancelGame?: () => void;
   onOpenSettings?: () => void;
 }
 
@@ -34,6 +35,7 @@ export function LiveGameView({
   settings,
   onUpdateSession,
   onEndGame,
+  onCancelGame,
   onOpenSettings,
 }: LiveGameViewProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(
@@ -341,7 +343,7 @@ export function LiveGameView({
         >
           <div className="flex items-center gap-2">
             <h1
-              className={`text-xl font-black italic tracking-widest bg-clip-text text-transparent font-serif uppercase ${
+              className={`text-lg sm:text-xl font-black italic tracking-widest bg-clip-text text-transparent font-serif uppercase ${
                 isDark
                   ? 'bg-gradient-to-r from-red-500 via-blue-500 to-purple-400'
                   : 'bg-gradient-to-r from-red-600 via-black to-purple-600'
@@ -351,27 +353,30 @@ export function LiveGameView({
             </h1>
             <span
               className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                isDark
+                session.mode === 'ranked'
+                  ? 'bg-amber-950/50 text-amber-300 border border-amber-800/60'
+                  : isDark
                   ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-800/60'
                   : 'bg-emerald-100 text-emerald-800'
               }`}
             >
-              LIVE
+              {session.mode === 'ranked' ? 'RANKED' : 'LIVE'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={handleUndo}
               disabled={session.history.length === 0}
-              className={`px-3 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-40 shadow-sm transition ${
+              title="Undo last score action"
+              className={`px-2.5 sm:px-3 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 disabled:opacity-40 shadow-sm transition active:scale-95 ${
                 isDark
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
                   : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100'
               }`}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Undo</span>
+              <span className="hidden xs:inline">Undo</span>
             </button>
 
             {onOpenSettings && (
@@ -389,12 +394,28 @@ export function LiveGameView({
               </button>
             )}
 
+            {onCancelGame && (
+              <button
+                type="button"
+                onClick={onCancelGame}
+                title="Cancel Game"
+                className={`px-2.5 sm:px-3 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1 transition active:scale-95 ${
+                  isDark
+                    ? 'bg-zinc-800/90 border-rose-900/50 text-rose-400 hover:bg-rose-950/40 hover:border-rose-700'
+                    : 'bg-white border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300'
+                }`}
+              >
+                <Ban className="w-3.5 h-3.5 text-rose-500" />
+                <span>Cancel</span>
+              </button>
+            )}
+
             <button
               onClick={onEndGame}
-              className="px-3 py-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1 hover:bg-rose-700 shadow-sm transition active:scale-95"
+              className="px-2.5 sm:px-3 py-1.5 rounded-full bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1 hover:bg-rose-700 shadow-sm transition active:scale-95"
             >
               <Flag className="w-3.5 h-3.5" />
-              <span>End Game</span>
+              <span>End<span className="hidden sm:inline"> Game</span></span>
             </button>
           </div>
         </div>

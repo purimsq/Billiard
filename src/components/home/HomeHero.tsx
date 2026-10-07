@@ -249,12 +249,12 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
               </button>
               <button
                 onClick={onClearSession}
-                title="Discard session"
-                className={`text-[11px] px-1.5 py-1 transition ${
-                  isDark ? 'text-zinc-400 hover:text-rose-400' : 'text-zinc-400 hover:text-rose-600'
+                title="Cancel & discard match"
+                className={`text-[11px] font-bold px-2 py-1 rounded-lg transition active:scale-95 ${
+                  isDark ? 'text-zinc-400 hover:text-rose-400 hover:bg-rose-950/20' : 'text-zinc-500 hover:text-rose-600 hover:bg-rose-50'
                 }`}
               >
-                Clear
+                Cancel
               </button>
             </div>
           </div>

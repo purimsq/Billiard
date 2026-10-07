@@ -8,6 +8,7 @@ import { RulesCard } from '@/components/home/RulesCard';
 import { PlayerSetupModal } from '@/components/game/PlayerSetupModal';
 import { LiveGameView } from '@/components/game/LiveGameView';
 import { EndGameModal } from '@/components/game/EndGameModal';
+import { CancelGameModal } from '@/components/game/CancelGameModal';
 import { LoadingScreen, LoadingVariant } from '@/components/ui/LoadingScreen';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { GameHistoryPage } from '@/components/settings/GameHistoryPage';
@@ -78,6 +79,7 @@ export default function Home() {
 
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(false);
   const [isEndGameOpen, setIsEndGameOpen] = useState<boolean>(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     if (typeof window !== 'undefined') {
@@ -205,9 +207,17 @@ export default function Home() {
     }
   };
 
-  const handleClearSession = () => {
+  // Open confirmation modal before discarding active game
+  const handleRequestCancelGame = () => {
+    setIsCancelModalOpen(true);
+  };
+
+  // Confirmed cancellation: wipe session without saving to history or remote database
+  const handleConfirmCancelGame = () => {
     clearActiveGame();
     setActiveSession(null);
+    setIsCancelModalOpen(false);
+    setIsEndGameOpen(false);
     setCurrentView('home');
   };
 
@@ -311,7 +321,7 @@ export default function Home() {
             activeSession={activeSession}
             onStartNewGame={handleOpenSetup}
             onResumeGame={handleResumeGame}
-            onClearSession={handleClearSession}
+            onClearSession={handleRequestCancelGame}
             onScrollToRules={handleScrollToRules}
             onOpenSettings={handleOpenSettings}
             onOpenTournamentTable={handleOpenTournamentTable}
@@ -328,6 +338,7 @@ export default function Home() {
           settings={settings}
           onUpdateSession={handleUpdateSession}
           onEndGame={handleEndGameClick}
+          onCancelGame={handleRequestCancelGame}
           onOpenSettings={handleOpenSettings}
         />
       )}
@@ -374,6 +385,18 @@ export default function Home() {
           isOpen={isEndGameOpen}
           onDone={handleDoneEndGame}
           onNewGame={handlePlayAgain}
+          onCancelGame={handleRequestCancelGame}
+          isDark={settings.darkMode}
+        />
+      )}
+
+      {/* cancel game confirmation modal */}
+      {activeSession && (
+        <CancelGameModal
+          isOpen={isCancelModalOpen}
+          session={activeSession}
+          onClose={() => setIsCancelModalOpen(false)}
+          onConfirmCancel={handleConfirmCancelGame}
           isDark={settings.darkMode}
         />
       )}
